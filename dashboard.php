@@ -191,10 +191,9 @@ $(document).ready(function() {
 });
 $(document).ready(function () {
     $("#excelTable tbody").on("click", ".row-header", function () {
-        $("#excelTable tbody tr").removeClass("highlight-row");
-        $(this).parent().addClass("highlight-row");
+        $(this).parent().toggleClass("highlight-row");
     });
-    
+
     $("#tableHeader th").on("click", function () {
         let columnIndex = $(this).index();
         let isHighlighted = $(this).hasClass("highlight-column");

@@ -76,7 +76,7 @@ if ($latestFile) {
         .main-content {
             height: 100vh; /* Make it take the full height */
             overflow-y: auto; /* Enable vertical scrolling */
-            padding: 70px;
+            padding: 80px;
         }
         .chart-container {
             width: 100%;
