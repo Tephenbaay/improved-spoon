@@ -1,18 +1,14 @@
-/* Reset default margin and padding */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
-
-/* Fullscreen layout */
-body {
-    display: flex;
+html, body {
     height: 100vh;
     overflow: hidden;
+    background-color: #cccaca;
+    margin: 0;
 }
-
-/* Sidebar Styling - Connected to Navbar */
 .sidebar {
     width: 200px;
     background-color: #4c5055;
@@ -27,24 +23,27 @@ body {
     top: 0;
     bottom: 0;
 }
-
-/* Main Content */
 .main-content {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    background-color: #f8f9fa;
+    background-color: #9c9c9c;
     padding: 20px;
     text-align: center;
-    margin-left: 200px; /* Prevent content from being hidden behind sidebar */
+    margin-left: 200px; 
     padding-top: 70px;
+    height: 100vh; /* Make it take the full height */
+    overflow-y: auto; /* Enable vertical scrolling */
 }
-
-/* Navbar Styling - Connected to Sidebar */
+.chart-container {
+    width: 100%;
+    max-width: 800px;
+    margin: auto;
+}
 .navbar {
     background-color: #50C878;
     color: white;
-    width: calc(100% - 200px); /* Adjust width considering sidebar */
+    width: calc(100% - 200px); 
     padding: 15px 20px;
     position: fixed;
     top: 0;
@@ -54,8 +53,6 @@ body {
     justify-content: flex-start;
     height: 80px;
 }
-
-/* Navbar brand and logo - Aligned to left */
 .navbar-brand {
     display: flex;
     align-items: center;
@@ -64,24 +61,17 @@ body {
     color: white;
     text-align: left;
 }
-
-/* Logo */
 .logo {
-    width: 60px; /* Adjusted size */
+    width: 60px; 
     height: 60px;
 }
-
-/* Remove default anchor color */
 .navbar a {
     color: white;
     text-decoration: none;
 }
-
-/* Sidebar Upload Button */
 .sidebar form {
     margin-top: 20px;
 }
-
 .sidebar button {
     width: 100%;
 }
@@ -89,53 +79,45 @@ body {
     border-collapse: collapse;
     width: 100%;
 }
-
 .table-bordered th, .table-bordered td {
-    border: 2px solid black !important; /* Thick black borders */
+    border: 2px solid black !important; 
     text-align: center;
     padding: 8px;
 }
-
 .table thead th {
-    background-color: #343a40; /* Dark header */
+    background-color: #343a40;
     color: white;
     font-weight: bold;
 }
-
 .table tbody tr:nth-child(even) {
-    background-color: #f2f2f2; /* Light gray for alternate rows */
+    background-color: #f2f2f2; 
 }
-
 .table-responsive {
-    max-height: 500px; /* Adjust as needed */
+    max-height: 500px; 
     overflow-y: auto;
     position: relative;
 }
-
 .table thead {
     position: sticky;
     top: 0;
     z-index: 2;
-    background-color: #343a40; /* Match Bootstrap's dark table header */
+    background-color: #343a40; 
     color: white;
 }
-
-/* Match the color of the column header */
 .row-header {
-    background-color: #343a40; /* Dark background like column headers */
-    color: white; /* White text */
+    background-color: #343a40; 
+    color: white;
     font-weight: bold;
     text-align: center;
-    width: 50px; /* Adjust width as needed */
+    width: 50px;
 }
-
-/* Optional: Prevent editing on row headers */
 .row-header {
-    pointer-events: none; /* Disable editing */
-    user-select: none; /* Prevent selection */
+    pointer-events: none;
+    user-select: none; 
 }
-
-/* Mobile Responsiveness */
+.highlight-column {
+    background-color: rgba(0, 255, 123, 0.3) !important;
+}
 @media (max-width: 768px) {
     .container-fluid {
         flex-direction: column;

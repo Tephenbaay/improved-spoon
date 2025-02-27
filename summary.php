@@ -65,6 +65,25 @@ if ($latestFile) {
     <title>Summary</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Ensure full height layout */
+        html, body {
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent body scroll */
+        }
+        .main-content {
+            height: 100vh; /* Make it take the full height */
+            overflow-y: auto; /* Enable vertical scrolling */
+            padding: 70px;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 800px;
+            margin: auto;
+        }
+    </style>
 </head>
 <body>
     <div class="container-fluid d-flex p-0">
@@ -108,35 +127,78 @@ if ($latestFile) {
             </nav>
 
             <div class="container mt-3">
-
-                <?php if ($selectedSheet): ?>
-                    <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
-                    <?php if (!empty($summaryData)): ?>
-                        <table class="table table-bordered" id="excelTable">
-                            <thead class="table-dark">
+    <?php if ($selectedSheet): ?>
+        <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
+        <?php if (!empty($summaryData)): ?>
+            <div class="row">
+                <!-- Table Section -->
+                <div class="col-md-6">
+                    <table class="table table-bordered" id="excelTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Column</th>
+                                <th>Total</th>
+                                <th>Average</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($summaryData["totals"] as $colIndex => $total): ?>
                                 <tr>
-                                    <th>Column</th>
-                                    <th>Total</th>
-                                    <th>Average</th>
+                                    <td><?php echo Coordinate::stringFromColumnIndex($colIndex); ?></td>
+                                    <td><?php echo number_format($total, 2); ?></td>
+                                    <td><?php echo number_format($summaryData["averages"][$colIndex], 2); ?></td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($summaryData["totals"] as $colIndex => $total): ?>
-                                    <tr>
-                                        <td><?php echo Coordinate::stringFromColumnIndex($colIndex); ?></td>
-                                        <td><?php echo number_format($total, 2); ?></td>
-                                        <td><?php echo number_format($summaryData["averages"][$colIndex], 2); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    <?php else: ?>
-                        <p>No numerical data available to summarize.</p>
-                    <?php endif; ?>
-                <?php else: ?>
-                    <p>Please select a sheet to view the summary.</p>
-                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="col-md-6">
+                    <h4>Analytics Overview</h4>
+                    <canvas id="summaryChart"></canvas>
+                </div>
             </div>
+
+            <!-- Pass PHP data to JavaScript -->
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    const ctx = document.getElementById('summaryChart').getContext('2d');
+
+                    const labels = <?php echo json_encode(array_map(fn($colIndex) => Coordinate::stringFromColumnIndex($colIndex), array_keys($summaryData["totals"]))); ?>;
+                    const totals = <?php echo json_encode(array_values($summaryData["totals"])); ?>;
+
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Total',
+                                data: totals,
+                                backgroundColor: 'rgba(80, 200, 120, 1)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                });
+            </script>
+        <?php else: ?>
+            <p>No numerical data available to summarize.</p>
+        <?php endif; ?>
+    <?php else: ?>
+        <p>Please select a sheet to view the summary.</p>
+    <?php endif; ?>
+</div>
+
         </div>
     </div>
 </body>

@@ -70,6 +70,9 @@ if ($latestFile) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="templates/download-removebg-preview.png">
+    <style>
+        .highlight-row { background-color: #f0e68c !important; }
+    </style>
 </head>
 <body>
     <div class="container-fluid d-flex p-0">
@@ -116,7 +119,7 @@ if ($latestFile) {
         <a href="summary.php?sheet=<?php echo urlencode($selectedSheet); ?>" class="btn btn-success mt-2 ms-auto">View Summary</a> 
                     <div class="ms-auto">
                         <span class="navbar-text me-3">Welcome, <?php echo $_SESSION["username"]; ?>!</span>
-                        <a href="logout.php" class="btn btn-primary">Logout</a>
+                        <a href="logout.php" class="btn btn-danger">Logout</a>
                     </div>
                 </div>
             </nav>
@@ -152,7 +155,7 @@ if ($latestFile) {
                                     $rows = $worksheet->toArray(null, true, true, true);
                                     $rowNumber = 1;
                                     foreach ($rows as $row) {
-                                        echo "<tr class='table-row'>";
+                                        echo "<tr class='table-row' data-row='$rowNumber'>";
                                         echo "<td class='row-header'>{$rowNumber}</td>"; // Added 'row-header' class
                                             for ($i = 1; $i <= $highestColumnIndex; $i++) {
                                                 $colLetter = Coordinate::stringFromColumnIndex($i);
@@ -186,6 +189,39 @@ $(document).ready(function() {
         });
     });
 });
+$(document).ready(function () {
+    // Function to highlight row when row number is clicked
+    $("#excelTable tbody").on("click", ".row-header", function () {
+        $("#excelTable tbody tr").removeClass("highlight-row");
+        $(this).parent().addClass("highlight-row");
+    });
+    // Function to highlight column when column header is clicked
+    $("#tableHeader th").on("click", function () {
+        let columnIndex = $(this).index();
+        let isHighlighted = $(this).hasClass("highlight-column");
+
+        // Remove highlights from all columns
+        $("#tableHeader th").removeClass("highlight-column");
+        $("#excelTable tbody tr td").removeClass("highlight-column");
+
+        // If it was already highlighted, remove highlight. Otherwise, highlight it.
+        if (!isHighlighted) {
+            $(this).addClass("highlight-column");
+            $("#excelTable tbody tr").each(function () {
+                $(this).children().eq(columnIndex).addClass("highlight-column");
+            });
+        }
+    });
+});
+
+// CSS for highlighting rows and columns
+$("<style>")
+    .prop("type", "text/css")
+    .html(`
+        .highlight-row { background-color: #f0e68c !important; } /* Light Yellow */
+        .highlight-column { background-color: #add8e6 !important; } /* Light Blue */
+    `)
+    .appendTo("head");
 $(document).ready(function() {
     $("#saveChanges").click(function() {
         let tableData = [];
