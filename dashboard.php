@@ -190,21 +190,18 @@ $(document).ready(function() {
     });
 });
 $(document).ready(function () {
-    // Function to highlight row when row number is clicked
     $("#excelTable tbody").on("click", ".row-header", function () {
         $("#excelTable tbody tr").removeClass("highlight-row");
         $(this).parent().addClass("highlight-row");
     });
-    // Function to highlight column when column header is clicked
+    
     $("#tableHeader th").on("click", function () {
         let columnIndex = $(this).index();
         let isHighlighted = $(this).hasClass("highlight-column");
 
-        // Remove highlights from all columns
         $("#tableHeader th").removeClass("highlight-column");
         $("#excelTable tbody tr td").removeClass("highlight-column");
 
-        // If it was already highlighted, remove highlight. Otherwise, highlight it.
         if (!isHighlighted) {
             $(this).addClass("highlight-column");
             $("#excelTable tbody tr").each(function () {
@@ -213,8 +210,6 @@ $(document).ready(function () {
         }
     });
 });
-
-// CSS for highlighting rows and columns
 $("<style>")
     .prop("type", "text/css")
     .html(`
