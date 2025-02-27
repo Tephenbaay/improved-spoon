@@ -116,7 +116,7 @@ if ($latestFile) {
                 </select>
             </form>
         <?php endif; ?>
-        <a href="summary.php?sheet=<?php echo urlencode($selectedSheet); ?>" class="btn btn-success mt-2 ms-auto">View Summary</a> 
+        <a href="summary.php?sheet=<?php echo urlencode($selectedSheet); ?>" class="btn btn-success mt-2 ms-2">View Summary</a> 
                     <div class="ms-auto">
                         <span class="navbar-text me-3">Welcome, <?php echo $_SESSION["username"]; ?>!</span>
                         <a href="logout.php" class="btn btn-danger">Logout</a>

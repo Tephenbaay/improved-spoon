@@ -89,7 +89,7 @@ if ($latestFile) {
     <div class="container-fluid d-flex p-0">
         <div class="sidebar">
             <h2 class="text-center">Summary</h2>
-            <a href="dashboard.php" class="btn btn-success w-100">Back to Dashboard</a>
+            
             <input type="text" id="searchInput" class="form-control mt-3" placeholder="Search...">
             <?php if ($selectedSheet && $latestFile): ?>
                 <a href="export_summary.php?sheet=<?php echo urlencode($selectedSheet); ?>" class="btn btn-warning w-100 mt-3">Export Summary</a>
@@ -119,6 +119,7 @@ if ($latestFile) {
                 </select>
             </form>
         <?php endif; ?>
+        <a href="dashboard.php" class="btn btn-success ms-2 mt-2">Back to Dashboard</a>
                     <div class="ms-auto">
                         <span class="navbar-text me-3">Welcome, <?php echo $_SESSION["username"]; ?>!</span>
                         <a href="logout.php" class="btn btn-danger">Logout</a>
