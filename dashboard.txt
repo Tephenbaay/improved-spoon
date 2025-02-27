@@ -1,0 +1,225 @@
+<?php
+session_start();
+if (!isset($_SESSION["user_id"])) {
+    header("Location: index.php");
+    exit;
+}
+
+include("config.php");
+require "vendor/autoload.php";
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+
+$message = "";
+$selectedSheet = isset($_GET['sheet']) ? $_GET['sheet'] : null;
+
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES["excel_file"])) {
+    $targetDir = "uploads/";
+
+    $existingFiles = glob($targetDir . "*.{xls,xlsx,csv}", GLOB_BRACE);
+    foreach ($existingFiles as $existingFile) {
+        unlink($existingFile); // Delete old file
+    }
+
+    $fileName = basename($_FILES["excel_file"]["name"]);
+    $targetFilePath = $targetDir . $fileName;
+    $fileType = pathinfo($targetFilePath, PATHINFO_EXTENSION);
+
+    $allowedTypes = ["xls", "xlsx", "csv"];
+    if (in_array($fileType, $allowedTypes)) {
+        if (move_uploaded_file($_FILES["excel_file"]["tmp_name"], $targetFilePath)) {
+          
+            $conn->query("DELETE FROM uploaded_files");
+
+            $stmt = $conn->prepare("INSERT INTO uploaded_files (file_name) VALUES (?)");
+            $stmt->bind_param("s", $fileName);
+            if ($stmt->execute()) {
+                $message = "File uploaded and replaced successfully!";
+                $_SESSION["last_uploaded_file"] = $fileName;
+            } else {
+                $message = "Error saving file to database.";
+            }
+            $stmt->close();
+        } else {
+            $message = "Error uploading file.";
+        }
+    } else {
+        $message = "Invalid file format. Only Excel files are allowed.";
+    }
+}
+$uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
+$latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/style.css"> <!-- Link to external CSS -->
+</head>
+<body>
+    <div class="container-fluid d-flex p-0">
+
+        <div class="sidebar">
+            <h2 class="text-center">Upload File</h2>
+            <form action="" method="post" enctype="multipart/form-data">
+                <input type="file" name="excel_file" class="form-control mb-2" required>
+                <button type="submit" class="btn btn-light w-100">Upload</button>
+            </form>
+
+            <button id="saveChanges" class="btn btn-success w-100 mt-3">Save Changes</button>
+        </div>
+
+        <div class="main-content w-100">
+            <nav class="navbar navbar-expand-lg navbar-dark">
+                <div class="container-fluid">
+                    <a class="navbar-brand d-flex align-items-center" href="#">
+                        <img src="templates/download-removebg-preview.png" class="logo" alt="Logo"> 
+                        <span class="ms-2">Bicutan Medical Center</span>
+                    </a>
+                    <?php if ($latestFile): ?>
+            <?php
+            $spreadsheet = IOFactory::load($latestFile);
+            $sheetNames = $spreadsheet->getSheetNames();
+            if (!$selectedSheet) {
+                $selectedSheet = $sheetNames[0]; // Default to first sheet
+            }
+            $worksheet = $spreadsheet->getSheetByName($selectedSheet);
+            ?>
+            <!-- Sheet Selection Dropdown -->
+            <form method="GET" class="mb-3">
+                <label for="sheetSelect">Select Sheet:</label>
+                <select name="sheet" id="sheetSelect" class="form-select" onchange="this.form.submit()">
+                    <?php foreach ($sheetNames as $sheet): ?>
+                        <option value="<?php echo $sheet; ?>" <?php echo $sheet === $selectedSheet ? 'selected' : ''; ?>>
+                            <?php echo $sheet; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
+        <?php endif; ?>
+                    <div class="ms-auto">
+                        <span class="navbar-text me-3">Welcome, <?php echo $_SESSION["username"]; ?>!</span>
+                        <a href="logout.php" class="btn btn-danger">Logout</a>
+                    </div>
+                </div>
+
+            </nav>
+
+            <?php if (!empty($message)): ?>
+                <div id="messageBox" class="alert alert-info mt-3"><?php echo $message; ?></div>
+            <?php endif; ?>
+
+            <?php if ($latestFile): ?>
+                <div class="container mt-3">
+                    <h4>Latest Uploaded File: <?php echo basename($latestFile); ?></h4>
+                    <button id="addRow" class="btn btn-primary mb-2">Add Row</button>
+                    <button id="addColumn" class="btn btn-secondary mb-2">Add Column</button>
+                    <div class="table-responsive">
+                        <table class="table table-bordered mt-3">
+                            <thead class="table-dark">
+                                <tr id="tableHeader">
+                                <th>No.</th> <!-- First column for row numbers -->
+                                <?php
+                            $highestColumn = $worksheet->getHighestColumn();
+                            $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+                            for ($i = 1; $i <= $highestColumnIndex; $i++) {
+                                echo "<th>" . Coordinate::stringFromColumnIndex($i) . "</th>";
+                            }
+                            ?>
+                </tr>
+            </thead>
+            <tbody id="excelTable">
+            <?php
+                        $rows = $worksheet->toArray(null, true, true, true);
+                        $rowNumber = 1;
+                        foreach ($rows as $row) {
+                            echo "<tr>";
+                            echo "<td>{$rowNumber}</td>";
+                            for ($i = 1; $i <= $highestColumnIndex; $i++) {
+                                $colLetter = Coordinate::stringFromColumnIndex($i);
+                                echo "<td>" . ($row[$colLetter] ?? "") . "</td>";
+                            }
+                            echo "</tr>";
+                            $rowNumber++;
+                        }
+                        ?>
+            </tbody>
+        </table>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+        </div>
+    </div>
+
+</body>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    $("#saveChanges").click(function() {
+        let tableData = [];
+        $("#excelTable tbody tr").each(function() {
+            let rowData = [];
+            $(this).find("td").each(function() {
+                rowData.push($(this).text().trim());
+            });
+            tableData.push(rowData);
+        });
+
+        $.ajax({
+            url: "save_excel.php",
+            method: "POST",
+            data: { excelData: JSON.stringify(tableData) },
+            success: function(response) {
+                alert(response);
+                location.reload();
+            },
+            error: function() {
+                alert("Failed to save changes.");
+            }
+        });
+    });
+});
+setTimeout(function() {
+        let messageBox = document.getElementById("messageBox");
+        if (messageBox) {
+            messageBox.style.transition = "opacity 0.5s";
+            messageBox.style.opacity = "0"; 
+            setTimeout(() => messageBox.remove(), 500); // Completely remove it after fading out
+        }
+    }, 4000); // Adjust time (4000 = 4 seconds)
+
+    $(document).ready(function() {
+    $("#addRow").click(function() {
+        let rowNumber = $("#excelTable tr").length + 1; // Get next row number
+        let newRow = `<tr><td class='row-number'>${rowNumber}</td>`; // First column = row number
+
+        $("#tableHeader th:not(:first)").each(function() { // Skip first column
+            let colLetter = $(this).text();
+            newRow += `<td contenteditable='true' data-row='${rowNumber}' data-col='${colLetter}'></td>`;
+        });
+
+        newRow += "</tr>";
+        $("#excelTable").append(newRow);
+    });
+
+    $("#addColumn").click(function() {
+        let lastColumn = $("#tableHeader th:last").text();
+        let nextColumn = String.fromCharCode(lastColumn.charCodeAt(0) + 1); // Get next letter (supports A-Z)
+
+        if (lastColumn === "Z") {
+            alert("Currently, this script supports A-Z columns only. Extending beyond requires a better approach.");
+            return;
+        }
+
+        $("#tableHeader").append(`<th>${nextColumn}</th>`); // Add to header
+        $("#excelTable tr").each(function() {
+            $(this).append(`<td contenteditable='true' data-col='${nextColumn}'></td>`); // Add new column to each row
+        });
+    });
+});
+</script>
+</html>
