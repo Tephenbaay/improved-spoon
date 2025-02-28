@@ -19,7 +19,7 @@ $sheetNames = [];
 if ($latestFile) {
     try {
         $spreadsheet = IOFactory::load($latestFile);
-        $sheetNames = $spreadsheet->getSheetNames(); 
+        $sheetNames = $spreadsheet->getSheetNames(); // Get all sheet names
 
         if ($selectedSheet && in_array($selectedSheet, $sheetNames)) {
             $worksheet = $spreadsheet->getSheetByName($selectedSheet);
@@ -32,7 +32,7 @@ if ($latestFile) {
                 $columnTotals = array_fill(1, $highestColumnIndex, 0);
                 $columnAverages = array_fill(1, $highestColumnIndex, 0);
 
-                for ($row = 2; $row <= $highestRow; $row++) { 
+                for ($row = 2; $row <= $highestRow; $row++) { // Assuming row 1 is headers
                     for ($col = 1; $col <= $highestColumnIndex; $col++) {
                         $cellCoordinate = Coordinate::stringFromColumnIndex($col) . $row;
                         $cellValue = $worksheet->getCell($cellCoordinate)->getValue();
@@ -68,7 +68,6 @@ if ($latestFile) {
     <link rel="icon" href="templates/download-removebg-preview.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        
         html, body {
             height: 100vh;
             margin: 0;
@@ -90,7 +89,6 @@ if ($latestFile) {
     <div class="container-fluid d-flex p-0">
         <div class="sidebar">
             <h2 class="text-center">Summary</h2>
-            
             <input type="text" id="searchInput" class="form-control mt-3" placeholder="Search...">
             <?php if ($selectedSheet && $latestFile): ?>
                 <a href="export_summary.php?sheet=<?php echo urlencode($selectedSheet); ?>" class="btn btn-warning w-100 mt-3">Export Summary</a>
@@ -129,11 +127,10 @@ if ($latestFile) {
             </nav>
 
             <div class="container mt-3">
-                <?php if ($selectedSheet): ?>
-                    <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
+    <?php if ($selectedSheet): ?>
+        <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
         <?php if (!empty($summaryData)): ?>
             <div class="row">
-                <!-- Table Section -->
                 <div class="col-md-6">
                     <table class="table table-bordered" id="excelTable">
                         <thead class="table-dark">
@@ -154,6 +151,7 @@ if ($latestFile) {
                         </tbody>
                     </table>
                 </div>
+
                 <div class="col-md-6">
                     <h4>Graphs Overview</h4>
                     <canvas id="summaryChart"></canvas>
