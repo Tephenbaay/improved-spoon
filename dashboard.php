@@ -25,7 +25,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES["excel_file"])) {
     $allowedTypes = ["xls", "xlsx", "csv"];
     if (in_array($fileType, $allowedTypes)) {
         if (move_uploaded_file($_FILES["excel_file"]["tmp_name"], $targetFilePath)) {
-            $conn->query("DELETE FROM uploaded_files");
 
             $stmt = $conn->prepare("INSERT INTO uploaded_files (file_name) VALUES (?)");
             $stmt->bind_param("s", $fileName);
@@ -78,6 +77,10 @@ if ($latestFile) {
     <div class="container-fluid d-flex p-0">
 
         <div class="sidebar">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                        <img src="templates/download-removebg-preview.png" class="logo" alt="Logo"> 
+                        <span class=" ">BMCI</span>
+                    </a>
         <input type="text" id="searchInput" class="form-control mt-3" placeholder="Search...">
             <h6 class="text-left mt-3">Upload File</h6>
             <form action="" method="post" enctype="multipart/form-data">
@@ -96,10 +99,6 @@ if ($latestFile) {
         <div class="main-content w-100">
             <nav class="navbar navbar-expand-lg navbar-dark">
                 <div class="container-fluid">
-                    <a class="navbar-brand d-flex align-items-center" href="#">
-                        <img src="templates/download-removebg-preview.png" class="logo" alt="Logo"> 
-                        <span class="ms-auto">BicutanMed</span>
-                    </a>
                     <?php if ($latestFile): ?>
                         <?php if ($latestFile && $worksheet): ?>
                         <form method="GET" class="mb-3">

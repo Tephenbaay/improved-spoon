@@ -19,7 +19,7 @@ $sheetNames = [];
 if ($latestFile) {
     try {
         $spreadsheet = IOFactory::load($latestFile);
-        $sheetNames = $spreadsheet->getSheetNames(); // Get all sheet names
+        $sheetNames = $spreadsheet->getSheetNames(); 
 
         if ($selectedSheet && in_array($selectedSheet, $sheetNames)) {
             $worksheet = $spreadsheet->getSheetByName($selectedSheet);
@@ -32,7 +32,7 @@ if ($latestFile) {
                 $columnTotals = array_fill(1, $highestColumnIndex, 0);
                 $columnAverages = array_fill(1, $highestColumnIndex, 0);
 
-                for ($row = 2; $row <= $highestRow; $row++) { // Assuming row 1 is headers
+                for ($row = 2; $row <= $highestRow; $row++) { 
                     for ($col = 1; $col <= $highestColumnIndex; $col++) {
                         $cellCoordinate = Coordinate::stringFromColumnIndex($col) . $row;
                         $cellValue = $worksheet->getCell($cellCoordinate)->getValue();
@@ -65,17 +65,18 @@ if ($latestFile) {
     <title>Summary</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="templates/download-removebg-preview.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Ensure full height layout */
+        
         html, body {
             height: 100vh;
             margin: 0;
-            overflow: hidden; /* Prevent body scroll */
+            overflow: hidden; 
         }
         .main-content {
-            height: 100vh; /* Make it take the full height */
-            overflow-y: auto; /* Enable vertical scrolling */
+            height: 100vh; 
+            overflow-y: auto; 
             padding: 80px;
         }
         .chart-container {
@@ -128,8 +129,8 @@ if ($latestFile) {
             </nav>
 
             <div class="container mt-3">
-    <?php if ($selectedSheet): ?>
-        <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
+                <?php if ($selectedSheet): ?>
+                    <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
         <?php if (!empty($summaryData)): ?>
             <div class="row">
                 <!-- Table Section -->
@@ -153,15 +154,12 @@ if ($latestFile) {
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Chart Section -->
                 <div class="col-md-6">
-                    <h4>Analytics Overview</h4>
+                    <h4>Graphs Overview</h4>
                     <canvas id="summaryChart"></canvas>
                 </div>
             </div>
 
-            <!-- Pass PHP data to JavaScript -->
             <script>
                 document.addEventListener("DOMContentLoaded", function() {
                     const ctx = document.getElementById('summaryChart').getContext('2d');
