@@ -13,48 +13,59 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 $selectedSheet = isset($_GET['sheet']) ? $_GET['sheet'] : null;
 $uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
 $latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
+$patientCensus = array_fill(1, 31, ["NHIP" => 0, "NNHIP" => 0]);
 $summaryData = [];
 $sheetNames = [];
 
 if ($latestFile) {
     try {
         $spreadsheet = IOFactory::load($latestFile);
-        $sheetNames = $spreadsheet->getSheetNames(); // Get all sheet names
+        $sheetNames = $spreadsheet->getSheetNames();
 
-        if ($selectedSheet && in_array($selectedSheet, $sheetNames)) {
+        if (in_array($selectedSheet, $sheetNames)) {
             $worksheet = $spreadsheet->getSheetByName($selectedSheet);
 
             if ($worksheet) {
                 $highestRow = $worksheet->getHighestRow();
-                $highestColumn = $worksheet->getHighestColumn();
-                $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
 
-                $columnTotals = array_fill(1, $highestColumnIndex, 0);
-                $columnAverages = array_fill(1, $highestColumnIndex, 0);
+                // Initialize census array for 31 days
+                for ($day = 1; $day <= 31; $day++) {
+                    $patientCensus[$day] = ["NHIP" => 0, "NNHIP" => 0];
+                }
 
-                for ($row = 2; $row <= $highestRow; $row++) { // Assuming row 1 is headers
-                    for ($col = 1; $col <= $highestColumnIndex; $col++) {
-                        $cellCoordinate = Coordinate::stringFromColumnIndex($col) . $row;
-                        $cellValue = $worksheet->getCell($cellCoordinate)->getValue();
-                        
-                        if (is_numeric($cellValue)) {
-                            $columnTotals[$col] += $cellValue;
+                for ($row = 2; $row <= $highestRow; $row++) { // Skip header row
+                    $patientName = $worksheet->getCell("A" . $row)->getValue();
+                    $dateAdmitted = $worksheet->getCell("B" . $row)->getValue();
+                    $dateDischarged = $worksheet->getCell("C" . $row)->getValue();
+                    $philhealthStatus = strtoupper(trim($worksheet->getCell("D" . $row)->getValue()));
+
+                    if (!$patientName || !$dateAdmitted) continue;
+
+                    $admitTimestamp = strtotime($dateAdmitted);
+                    $dischargeTimestamp = $dateDischarged ? strtotime($dateDischarged) : null;
+
+                    for ($day = 1; $day <= 31; $day++) {
+                        $currentTimestamp = strtotime(date("Y-m-") . $day);
+
+                        if ($admitTimestamp <= $currentTimestamp && (!$dischargeTimestamp || $dischargeTimestamp > $currentTimestamp)) {
+                            if ($philhealthStatus === "NHIP") {
+                                $patientCensus[$day]["NHIP"]++;
+                            } else {
+                                $patientCensus[$day]["NNHIP"]++;
+                            }
                         }
                     }
                 }
 
-                foreach ($columnTotals as $col => $total) {
-                    $columnAverages[$col] = $highestRow > 1 ? $total / ($highestRow - 1) : 0;
-                }
-
-                $summaryData = [
-                    "totals" => $columnTotals,
-                    "averages" => $columnAverages,
+                // Populate summaryData totals
+                $summaryData["totals"] = [
+                    "NHIP" => array_sum(array_column($patientCensus, "NHIP")),
+                    "NNHIP" => array_sum(array_column($patientCensus, "NNHIP"))
                 ];
             }
         }
     } catch (Exception $e) {
-        $message = "Error loading Excel file: " . $e->getMessage();
+        $message = "Error processing the Excel file: " . $e->getMessage();
     }
 }
 ?>
@@ -115,8 +126,6 @@ if ($latestFile) {
                             </select>
                         </form>
                     <?php endif; ?>
-                </select>
-            </form>
         <?php endif; ?>
         <a href="dashboard.php" class="btn btn-success ms-2 mt-2">Back to Dashboard</a>
                     <div class="ms-auto">
@@ -127,75 +136,61 @@ if ($latestFile) {
             </nav>
 
             <div class="container mt-3">
-    <?php if ($selectedSheet): ?>
-        <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
-        <?php if (!empty($summaryData)): ?>
-            <div class="row">
-                <div class="col-md-6">
-                    <table class="table table-bordered" id="excelTable">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Column</th>
-                                <th>Total</th>
-                                <th>Average</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($summaryData["totals"] as $colIndex => $total): ?>
-                                <tr>
-                                    <td><?php echo Coordinate::stringFromColumnIndex($colIndex); ?></td>
-                                    <td><?php echo number_format($total, 2); ?></td>
-                                    <td><?php echo number_format($summaryData["averages"][$colIndex], 2); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                <?php if ($selectedSheet): ?>
+                    <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h3>31-Day Patient Census for <?= date("F Y"); ?></h3>
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Day</th>
+                                        <th>NHIP (PhilHealth)</th>
+                                        <th>NNHIP (Non-PhilHealth)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($patientCensus as $day => $counts): ?>
+                                        <tr>
+                                            <td><?= $day; ?></td>
+                                            <td><?= $counts["NHIP"]; ?></td>
+                                            <td><?= $counts["NNHIP"]; ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
 
-                <div class="col-md-6">
-                    <h4>Graphs Overview</h4>
-                    <canvas id="summaryChart"></canvas>
-                </div>
-            </div>
+                        <div class="col-md-6">
+                            <h4>Graphs Overview</h4>
+                            <canvas id="summaryChart"></canvas>
+                        </div>
+                    </div>
 
-            <script>
-                document.addEventListener("DOMContentLoaded", function() {
-                    const ctx = document.getElementById('summaryChart').getContext('2d');
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            const ctx = document.getElementById('summaryChart').getContext('2d');
 
-                    const labels = <?php echo json_encode(array_map(fn($colIndex) => Coordinate::stringFromColumnIndex($colIndex), array_keys($summaryData["totals"]))); ?>;
-                    const totals = <?php echo json_encode(array_values($summaryData["totals"])); ?>;
+                            const labels = <?php echo json_encode(array_keys($patientCensus)); ?>;
+                            const nhipData = <?php echo json_encode(array_column($patientCensus, "NHIP")); ?>;
+                            const nnhipData = <?php echo json_encode(array_column($patientCensus, "NNHIP")); ?>;
 
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Total',
-                                data: totals,
-                                backgroundColor: 'rgba(80, 200, 120, 1)',
-                                borderColor: 'rgba(54, 162, 235, 1)',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            scales: {
-                                y: {
-                                    beginAtZero: true
+                            new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: labels,
+                                    datasets: [
+                                        { label: 'NHIP', data: nhipData, backgroundColor: 'blue' },
+                                        { label: 'NNHIP', data: nnhipData, backgroundColor: 'red' }
+                                    ]
                                 }
-                            }
-                        }
-                    });
-                });
-            </script>
-        <?php else: ?>
-            <p>No numerical data available to summarize.</p>
-        <?php endif; ?>
-    <?php else: ?>
-        <p>Please select a sheet to view the summary.</p>
-    <?php endif; ?>
-</div>
-
+                            });
+                        });
+                    </script>
+                <?php else: ?>
+                    <p>Please select a sheet to view the summary.</p>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </body>
