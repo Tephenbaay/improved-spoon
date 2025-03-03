@@ -8,13 +8,11 @@ if (!isset($_SESSION["user_id"])) {
 include("config.php");
 require "vendor/autoload.php";
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 $selectedSheet = isset($_GET['sheet']) ? $_GET['sheet'] : null;
 $uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
 $latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
-$patientCensus = array_fill(1, 31, ["NHIP" => 0, "NNHIP" => 0]);
-$summaryData = [];
+$patientCensus = array_fill(1, 31, ["Day" => 0, "NHIP" => 0, "NNHIP" => 0]);
 $sheetNames = [];
 
 if ($latestFile) {
@@ -24,31 +22,29 @@ if ($latestFile) {
 
         if (in_array($selectedSheet, $sheetNames)) {
             $worksheet = $spreadsheet->getSheetByName($selectedSheet);
-
             if ($worksheet) {
                 $highestRow = $worksheet->getHighestRow();
-
-                // Initialize census array for 31 days
-                for ($day = 1; $day <= 31; $day++) {
-                    $patientCensus[$day] = ["NHIP" => 0, "NNHIP" => 0];
-                }
 
                 for ($row = 2; $row <= $highestRow; $row++) { // Skip header row
                     $patientName = $worksheet->getCell("A" . $row)->getValue();
                     $dateAdmitted = $worksheet->getCell("B" . $row)->getValue();
                     $dateDischarged = $worksheet->getCell("C" . $row)->getValue();
-                    $philhealthStatus = strtoupper(trim($worksheet->getCell("D" . $row)->getValue()));
+                    $philhealthStatus = trim($worksheet->getCell("D" . $row)->getValue());
 
                     if (!$patientName || !$dateAdmitted) continue;
 
                     $admitTimestamp = strtotime($dateAdmitted);
                     $dischargeTimestamp = $dateDischarged ? strtotime($dateDischarged) : null;
-
+                    
+                    // Loop through each day of the current month
                     for ($day = 1; $day <= 31; $day++) {
-                        $currentTimestamp = strtotime(date("Y-m-") . $day);
+                        $currentDate = date("Y-m-") . str_pad($day, 2, "0", STR_PAD_LEFT);
+                        $midnightTimestamp = strtotime($currentDate . " 00:00:00");
 
-                        if ($admitTimestamp <= $currentTimestamp && (!$dischargeTimestamp || $dischargeTimestamp > $currentTimestamp)) {
-                            if ($philhealthStatus === "NHIP") {
+                        // Check if the patient was present at the 12 AM cutoff
+                        if ($admitTimestamp < $midnightTimestamp && (!$dischargeTimestamp || $dischargeTimestamp > $midnightTimestamp)) {
+                            $patientCensus[$day]["Day"]++;
+                            if (!empty($philhealthStatus)) {
                                 $patientCensus[$day]["NHIP"]++;
                             } else {
                                 $patientCensus[$day]["NNHIP"]++;
@@ -56,12 +52,6 @@ if ($latestFile) {
                         }
                     }
                 }
-
-                // Populate summaryData totals
-                $summaryData["totals"] = [
-                    "NHIP" => array_sum(array_column($patientCensus, "NHIP")),
-                    "NNHIP" => array_sum(array_column($patientCensus, "NNHIP"))
-                ];
             }
         }
     } catch (Exception $e) {
@@ -109,12 +99,11 @@ if ($latestFile) {
         <div class="main-content w-100">
             <nav class="navbar navbar-expand-lg navbar-dark">
                 <div class="container-fluid">
-                <a class="navbar-brand d-flex align-items-center" href="#">
+                    <a class="navbar-brand d-flex align-items-center" href="#">
                         <img src="templates/download-removebg-preview.png" class="logo" alt="Logo"> 
                         <span class="ms-2">BicutanMed</span>
                     </a>
-                    <?php if ($latestFile): ?>
-                        <?php if ($latestFile && $worksheet): ?>
+                    <?php if ($latestFile && $worksheet): ?>
                         <form method="GET" class="mb-3">
                             <label for="sheetSelect">Select Sheet:</label>
                             <select name="sheet" id="sheetSelect" class="form-select" onchange="this.form.submit()">
@@ -126,8 +115,7 @@ if ($latestFile) {
                             </select>
                         </form>
                     <?php endif; ?>
-        <?php endif; ?>
-        <a href="dashboard.php" class="btn btn-success ms-2 mt-2">Back to Dashboard</a>
+                    <a href="dashboard.php" class="btn btn-success ms-2 mt-2">Back to Dashboard</a>
                     <div class="ms-auto">
                         <span class="navbar-text me-3">Welcome, <?php echo $_SESSION["username"]; ?>!</span>
                         <a href="logout.php" class="btn btn-danger">Logout</a>
@@ -144,6 +132,7 @@ if ($latestFile) {
                             <table class="table table-bordered">
                                 <thead>
                                     <tr>
+                                        <th>No.</th>
                                         <th>Day</th>
                                         <th>NHIP (PhilHealth)</th>
                                         <th>NNHIP (Non-PhilHealth)</th>
@@ -153,6 +142,7 @@ if ($latestFile) {
                                     <?php foreach ($patientCensus as $day => $counts): ?>
                                         <tr>
                                             <td><?= $day; ?></td>
+                                            <td><?= $counts["Day"]; ?></td>
                                             <td><?= $counts["NHIP"]; ?></td>
                                             <td><?= $counts["NNHIP"]; ?></td>
                                         </tr>
@@ -187,13 +177,10 @@ if ($latestFile) {
                             });
                         });
                     </script>
-                <?php else: ?>
-                    <p>Please select a sheet to view the summary.</p>
                 <?php endif; ?>
             </div>
         </div>
     </div>
-</body>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 $(document).ready(function() {
