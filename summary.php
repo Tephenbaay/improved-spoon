@@ -8,13 +8,29 @@ if (!isset($_SESSION["user_id"])) {
 include("config.php");
 require "vendor/autoload.php";
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
-$selectedSheet = isset($_GET['sheet']) ? $_GET['sheet'] : null;
+function convertExcelTime($excelTime) {
+    if (!is_numeric($excelTime)) return "00:00:00";
+    $secondsInDay = 86400;
+    $totalSeconds = round($excelTime * $secondsInDay);
+    return gmdate("H:i:s", $totalSeconds);
+}
+
+$selectedSheet = $_GET['sheet'] ?? null;
 $uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
 $latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
 
-// Initialize patient census (1-31 days)
-$patientCensus = array_fill(1, 31, ["Day" => 0, "NHIP" => 0, "NNHIP" => 0]);
+$patientCensus = [];
+for ($day = 1; $day <= 31; $day++) {
+    $patientCensus[$day] = [
+        "No" => $day, 
+        "Day" => 0, 
+        "NHIP" => 0, 
+        "NNHIP" => 0 
+    ];
+}
+
 $sheetNames = [];
 
 if ($latestFile) {
@@ -27,36 +43,55 @@ if ($latestFile) {
             if ($worksheet) {
                 $highestRow = $worksheet->getHighestRow();
 
-                for ($row = 2; $row <= $highestRow; $row++) { // Skip header row
-                    $patientName = $worksheet->getCell("A" . $row)->getValue();
-                    $dateAdmitted = $worksheet->getCell("B" . $row)->getValue();
-                    $timeAdmitted = $worksheet->getCell("C" . $row)->getValue();
-                    $dateDischarged = $worksheet->getCell("D" . $row)->getValue();
-                    $timeDischarged = $worksheet->getCell("E" . $row)->getValue();
-                    $philhealthStatus = trim($worksheet->getCell("F" . $row)->getValue());
+                for ($row = 3; $row <= $highestRow; $row++) { 
+                    $patientName = trim($worksheet->getCell("A" . $row)->getValue());
+                    $dateAdmitted = $worksheet->getCell("K" . $row)->getValue();
+                    $timeAdmitted = trim($worksheet->getCell("L" . $row)->getValue());
+                    $dateDischarged = $worksheet->getCell("M" . $row)->getValue();
+                    $timeDischarged = trim($worksheet->getCell("N" . $row)->getValue());
+                    $philhealthStatus = strtolower(trim($worksheet->getCell("F" . $row)->getValue()));
 
                     if (!$patientName || !$dateAdmitted || !$timeAdmitted) continue;
 
-                    // Convert admission and discharge to timestamps
-                    $admitTimestamp = strtotime($dateAdmitted . " " . $timeAdmitted);
-                    $dischargeTimestamp = $dateDischarged && $timeDischarged ? strtotime($dateDischarged . " " . $timeDischarged) : null;
-
-                    // Start count from the first of the month
-                    for ($day = 1; $day <= 31; $day++) {
-                        $currentDate = date("Y-m-") . str_pad($day, 2, "0", STR_PAD_LEFT);
-                        $midnightTimestamp = strtotime($currentDate . " 00:00:00");
-
-                        // Check if patient was present at 12:00 AM
-                        if ($admitTimestamp < $midnightTimestamp && (!$dischargeTimestamp || $dischargeTimestamp > $midnightTimestamp)) {
-                            $patientCensus[$day]["Day"]++;
-                            if (!empty($philhealthStatus)) {
-                                $patientCensus[$day]["NHIP"]++;
-                            } else {
-                                $patientCensus[$day]["NNHIP"]++;
-                            }
-                            break; // Stop after first valid day
-                        }
+                    if (is_numeric($dateAdmitted)) {
+                        $dateAdmitted = Date::excelToDateTimeObject($dateAdmitted)->format("Y-m-d");
                     }
+                    if ($dateDischarged && is_numeric($dateDischarged)) {
+                        $dateDischarged = Date::excelToDateTimeObject($dateDischarged)->format("Y-m-d");
+                    }                                    
+
+                    $timeAdmitted = convertExcelTime($timeAdmitted);
+                    $timeDischarged = convertExcelTime($timeDischarged);
+
+                    $admitTimestamp = strtotime("$dateAdmitted $timeAdmitted");
+                    $dischargeTimestamp = ($dateDischarged) ? strtotime("$dateDischarged $timeDischarged") : null;
+
+                    $isNHIP = ($philhealthStatus === "nhip");
+
+                    echo "<pre>";
+                            echo "Patient: $patientName is counted on $currentDate\n";
+                            echo "Admitted: " . date("Y-m-d H:i:s", $admitTimestamp) . "\n";
+                            echo "Discharged: " . ($dischargeTimestamp ? date("Y-m-d H:i:s", $dischargeTimestamp) : "Still Admitted") . "\n";
+                            echo "Counted under: " . ($isNHIP ? "NHIP" : "Non-NHIP") . "\n";
+                            echo "--------------------\n";
+                            echo "</pre>";
+
+                    for ($day = 1; $day <= 31; $day++) {
+                        $currentDate = date("Y-m-d", strtotime("$dateAdmitted + " . ($day - 1) . " days"));
+                        $dayStart = strtotime("$currentDate 00:00:00");
+                        $dayEnd = strtotime("$currentDate 23:59:59");
+                    
+                        if ($admitTimestamp <= strtotime("$currentDate 23:59:59") && 
+                        (!$dischargeTimestamp || $dischargeTimestamp >= strtotime("$currentDate 00:00:00"))) {
+                            $patientCensus[$day]["Day"] += 1;
+                            
+                            if ($isNHIP) {
+                                $patientCensus[$day]["NHIP"] += 1;
+                            } else {
+                                $patientCensus[$day]["NNHIP"] += 1;
+                            }
+                        }
+                    }                    
                 }
             }
         }
@@ -162,6 +197,8 @@ if ($latestFile) {
             </div>
         </div>
     </div>
+</body>
+</html>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 $(document).ready(function() {
