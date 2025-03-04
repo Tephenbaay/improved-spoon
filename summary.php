@@ -12,6 +12,8 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 $selectedSheet = isset($_GET['sheet']) ? $_GET['sheet'] : null;
 $uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
 $latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
+
+// Initialize patient census (1-31 days)
 $patientCensus = array_fill(1, 31, ["Day" => 0, "NHIP" => 0, "NNHIP" => 0]);
 $sheetNames = [];
 
@@ -28,20 +30,23 @@ if ($latestFile) {
                 for ($row = 2; $row <= $highestRow; $row++) { // Skip header row
                     $patientName = $worksheet->getCell("A" . $row)->getValue();
                     $dateAdmitted = $worksheet->getCell("B" . $row)->getValue();
-                    $dateDischarged = $worksheet->getCell("C" . $row)->getValue();
-                    $philhealthStatus = trim($worksheet->getCell("D" . $row)->getValue());
+                    $timeAdmitted = $worksheet->getCell("C" . $row)->getValue();
+                    $dateDischarged = $worksheet->getCell("D" . $row)->getValue();
+                    $timeDischarged = $worksheet->getCell("E" . $row)->getValue();
+                    $philhealthStatus = trim($worksheet->getCell("F" . $row)->getValue());
 
-                    if (!$patientName || !$dateAdmitted) continue;
+                    if (!$patientName || !$dateAdmitted || !$timeAdmitted) continue;
 
-                    $admitTimestamp = strtotime($dateAdmitted);
-                    $dischargeTimestamp = $dateDischarged ? strtotime($dateDischarged) : null;
-                    
-                    // Loop through each day of the current month
+                    // Convert admission and discharge to timestamps
+                    $admitTimestamp = strtotime($dateAdmitted . " " . $timeAdmitted);
+                    $dischargeTimestamp = $dateDischarged && $timeDischarged ? strtotime($dateDischarged . " " . $timeDischarged) : null;
+
+                    // Start count from the first of the month
                     for ($day = 1; $day <= 31; $day++) {
                         $currentDate = date("Y-m-") . str_pad($day, 2, "0", STR_PAD_LEFT);
                         $midnightTimestamp = strtotime($currentDate . " 00:00:00");
 
-                        // Check if the patient was present at the 12 AM cutoff
+                        // Check if patient was present at 12:00 AM
                         if ($admitTimestamp < $midnightTimestamp && (!$dischargeTimestamp || $dischargeTimestamp > $midnightTimestamp)) {
                             $patientCensus[$day]["Day"]++;
                             if (!empty($philhealthStatus)) {
@@ -49,6 +54,7 @@ if ($latestFile) {
                             } else {
                                 $patientCensus[$day]["NNHIP"]++;
                             }
+                            break; // Stop after first valid day
                         }
                     }
                 }
@@ -68,23 +74,6 @@ if ($latestFile) {
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="templates/download-removebg-preview.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        html, body {
-            height: 100vh;
-            margin: 0;
-            overflow: hidden; 
-        }
-        .main-content {
-            height: 100vh; 
-            overflow-y: auto; 
-            padding: 80px;
-        }
-        .chart-container {
-            width: 100%;
-            max-width: 800px;
-            margin: auto;
-        }
-    </style>
 </head>
 <body>
     <div class="container-fluid d-flex p-0">
@@ -126,41 +115,33 @@ if ($latestFile) {
             <div class="container mt-3">
                 <?php if ($selectedSheet): ?>
                     <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h3>31-Day Patient Census for <?= date("F Y"); ?></h3>
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>No.</th>
-                                        <th>Day</th>
-                                        <th>NHIP (PhilHealth)</th>
-                                        <th>NNHIP (Non-PhilHealth)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($patientCensus as $day => $counts): ?>
-                                        <tr>
-                                            <td><?= $day; ?></td>
-                                            <td><?= $counts["Day"]; ?></td>
-                                            <td><?= $counts["NHIP"]; ?></td>
-                                            <td><?= $counts["NNHIP"]; ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>No.</th>
+                                <th>Day</th>
+                                <th>NHIP (PhilHealth)</th>
+                                <th>NNHIP (Non-PhilHealth)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($patientCensus as $day => $counts): ?>
+                                <tr>
+                                    <td><?= $day; ?></td>
+                                    <td><?= $counts["Day"]; ?></td>
+                                    <td><?= $counts["NHIP"]; ?></td>
+                                    <td><?= $counts["NNHIP"]; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
 
-                        <div class="col-md-6">
-                            <h4>Graphs Overview</h4>
-                            <canvas id="summaryChart"></canvas>
-                        </div>
-                    </div>
+                    <h4>Graphs Overview</h4>
+                    <canvas id="summaryChart"></canvas>
 
                     <script>
                         document.addEventListener("DOMContentLoaded", function() {
                             const ctx = document.getElementById('summaryChart').getContext('2d');
-
                             const labels = <?php echo json_encode(array_keys($patientCensus)); ?>;
                             const nhipData = <?php echo json_encode(array_column($patientCensus, "NHIP")); ?>;
                             const nnhipData = <?php echo json_encode(array_column($patientCensus, "NNHIP")); ?>;
