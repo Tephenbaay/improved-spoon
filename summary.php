@@ -54,7 +54,10 @@ if ($latestFile) {
                     if (!$patientName || !$dateAdmitted || !$timeAdmitted) continue;
 
                     if (is_numeric($dateAdmitted)) {
+                        // echo "🔍 Raw Excel Date for $patientName: $dateAdmitted\n";  // Debugging
                         $dateAdmitted = Date::excelToDateTimeObject($dateAdmitted)->format("Y-m-d");
+                    }else {
+                        // echo "❌ Invalid or Non-Numeric DateAdmitted for $patientName: $dateAdmitted\n";  // Debugging
                     }
                     if ($dateDischarged && is_numeric($dateDischarged)) {
                         $dateDischarged = Date::excelToDateTimeObject($dateDischarged)->format("Y-m-d");
@@ -66,30 +69,72 @@ if ($latestFile) {
                     $admitTimestamp = strtotime("$dateAdmitted $timeAdmitted");
                     $dischargeTimestamp = ($dateDischarged) ? strtotime("$dateDischarged $timeDischarged") : null;
 
-                    $isNHIP = ($philhealthStatus === "nhip");
+                    $isNHIP = (strcasecmp($philhealthStatus, "NHIP") == 0);
 
-                    echo "<pre>";
-                            echo "Patient: $patientName is counted on $currentDate\n";
-                            echo "Admitted: " . date("Y-m-d H:i:s", $admitTimestamp) . "\n";
-                            echo "Discharged: " . ($dischargeTimestamp ? date("Y-m-d H:i:s", $dischargeTimestamp) : "Still Admitted") . "\n";
-                            echo "Counted under: " . ($isNHIP ? "NHIP" : "Non-NHIP") . "\n";
-                            echo "--------------------\n";
-                            echo "</pre>";
+                    // echo "<pre>";
+                        // echo "Patient: $patientName is counted on " . date("Y-m-d", $admitTimestamp) ."\n";
+                        // echo "Admitted: " . date("Y-m-d H:i:s", $admitTimestamp) . "\n";
+                        // echo "Discharged: " . ($dischargeTimestamp ? date("Y-m-d H:i:s", $dischargeTimestamp) : "Still Admitted") . "\n";
+                        // echo "Counted under: " . ($isNHIP ? "NHIP" : "Non-NHIP") . "\n";
+                        // echo "--------------------\n";
+                    // echo "</pre>";
+                    
+                    $originalDateAdmitted = $dateAdmitted;  
 
                     for ($day = 1; $day <= 31; $day++) {
-                        $currentDate = date("Y-m-d", strtotime("$dateAdmitted + " . ($day - 1) . " days"));
+                        $dateAdmitted = $originalDateAdmitted;  
+                    
+                        if (!$dateAdmitted || trim($dateAdmitted) === "") {
+                            // echo "⚠️ Skipping $patientName due to missing DateAdmitted!\n";
+                            continue;
+                        }
+                    
+                        // Convert if it's numeric (Excel timestamp)
+                        if (is_numeric($dateAdmitted)) {
+                            $dateAdmitted = Date::excelToDateTimeObject($dateAdmitted)->format("Y-m-d");
+                        } else {
+                            $dateAdmitted = trim($dateAdmitted);
+                        }
+
+                        $dateFormats = ["Y-m-d", "m/d/Y", "Y/m/d", "d-m-Y"];
+                        $dateObj = false;
+                        foreach ($dateFormats as $format) {
+                            $dateObj = DateTime::createFromFormat($format, $dateAdmitted);
+                            if ($dateObj) break;
+                        }
+                    
+                        if (!$dateObj) {
+                            // echo "⚠️ Error: Invalid date format for $patientName! Skipping...\n";
+                            continue;
+                        }
+
+                        $dateObj->modify("+".($day - 1)." days");
+                        $currentDate = $dateObj->format("Y-m-d");
+                    
                         $dayStart = strtotime("$currentDate 00:00:00");
                         $dayEnd = strtotime("$currentDate 23:59:59");
                     
-                        if ($admitTimestamp <= strtotime("$currentDate 23:59:59") && 
-                        (!$dischargeTimestamp || $dischargeTimestamp >= strtotime("$currentDate 00:00:00"))) {
+                        if ($admitTimestamp <= $dayEnd && (!$dischargeTimestamp || $dischargeTimestamp >= $dayStart)) {
+                            if (!isset($patientCensus[$day])) {
+                                $patientCensus[$day] = ["Day" => 0, "NHIP" => 0, "NNHIP" => 0];
+                            }
+                    
                             $patientCensus[$day]["Day"] += 1;
-                            
+                    
                             if ($isNHIP) {
                                 $patientCensus[$day]["NHIP"] += 1;
                             } else {
                                 $patientCensus[$day]["NNHIP"] += 1;
                             }
+                    
+                            // echo "<pre>";
+                            // echo "Day: $day | Date: $currentDate\n";
+                            // echo "Patient: $patientName | NHIP: " . ($isNHIP ? "YES" : "NO") . "\n";
+                            // echo "Current Day Count: " . $patientCensus[$day]["Day"] . "\n";
+                            // echo "NHIP Count: " . $patientCensus[$day]["NHIP"] . "\n";
+                            // echo "NNHIP Count: " . $patientCensus[$day]["NNHIP"] . "\n";
+                            // echo "----------------------------------\n";
+                            // echo "</pre>";
                         }
                     }                    
                 }
@@ -163,9 +208,9 @@ if ($latestFile) {
                             <?php foreach ($patientCensus as $day => $counts): ?>
                                 <tr>
                                     <td><?= $day; ?></td>
-                                    <td><?= $counts["Day"]; ?></td>
-                                    <td><?= $counts["NHIP"]; ?></td>
-                                    <td><?= $counts["NNHIP"]; ?></td>
+                                    <td><?php echo htmlspecialchars($counts["Day"]); ?></td>
+                                    <td><?php echo htmlspecialchars($counts["NHIP"]); ?></td>
+                                    <td><?php echo htmlspecialchars($counts["NNHIP"]); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
