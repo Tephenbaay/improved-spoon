@@ -45,11 +45,13 @@ if ($latestFile) {
 
                 for ($row = 3; $row <= $highestRow; $row++) {
                     $patientName = trim($worksheet->getCell("A" . $row)->getValue());
-                    $dateAdmitted = $worksheet->getCell("K" . $row)->getValue();
+                    $philhealthAmount = trim($worksheet->getCell("F" . $row)->getValue()); 
+                    $membershipType = strtolower(trim($worksheet->getCell("T" . $row)->getValue())); 
+                    
+                    $dateAdmitted = $worksheet->getCell("K" . $row)->getValue(); 
                     $timeAdmitted = trim($worksheet->getCell("L" . $row)->getValue());
                     $dateDischarged = $worksheet->getCell("M" . $row)->getValue();
                     $timeDischarged = trim($worksheet->getCell("N" . $row)->getValue());
-                    $philhealthStatus = strtolower(trim($worksheet->getCell("T" . $row)->getValue())); 
                 
                     if (!$patientName || !$dateAdmitted) continue;
 
@@ -66,21 +68,19 @@ if ($latestFile) {
                     $admitTimestamp = strtotime("$dateAdmitted $timeAdmitted");
                     $dischargeTimestamp = ($dateDischarged) ? strtotime("$dateDischarged $timeDischarged") : null;
 
-                    $isNNHIP = (strpos($philhealthStatus, "NON PHIC") !== false); 
-                
-                    for ($day = 1; $day <= 31; $day++) {
-                        $monthStart = date("Y-m-01", $admitTimestamp); 
-                        $currentDate = date("Y-m-d", strtotime("+".($day-1)." days", strtotime($monthStart)));
-                        $dayStart = strtotime("$currentDate 00:00:00");
-                        $dayEnd = strtotime("$currentDate 23:59:59");
-                
-                        if ($admitTimestamp <= $dayEnd && (!$dischargeTimestamp || $dischargeTimestamp >= $dayStart)) {
-                            $patientCensus[$day]["Day"] += 1;
-                            if ($isNNHIP) {
-                                $patientCensus[$day]["NNHIP"] += 1;
-                            } else {
-                                $patientCensus[$day]["NHIP"] += 1;
-                            }
+                    $isNHIP = (is_numeric($philhealthAmount) && floatval($philhealthAmount) > 0);
+
+                    $countDay = date("Y-m-d", strtotime("+1 day", strtotime($dateAdmitted)));
+                    $countDayStart = strtotime("$countDay 00:00:00");
+                    $countDayEnd = strtotime("$countDay 23:59:59");
+
+                    if (!$dischargeTimestamp || $dischargeTimestamp > $countDayStart) {
+                        $dayNumber = (int)date("d", $countDayStart);
+                        $patientCensus[$dayNumber]["Day"] += 1;
+                        if ($isNHIP) {
+                            $patientCensus[$dayNumber]["NHIP"] += 1;
+                        } else {
+                            $patientCensus[$dayNumber]["NNHIP"] += 1;
                         }
                     }
                 }                
@@ -91,7 +91,6 @@ if ($latestFile) {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -224,7 +223,6 @@ if ($latestFile) {
                     </tbody>
                 </table>
             </div>
-
             <div class="graph-container">
                 <h4>Graphs Overview</h4>
                 <canvas id="summaryChart"></canvas>
