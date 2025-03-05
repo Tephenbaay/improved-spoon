@@ -43,101 +43,47 @@ if ($latestFile) {
             if ($worksheet) {
                 $highestRow = $worksheet->getHighestRow();
 
-                for ($row = 3; $row <= $highestRow; $row++) { 
+                for ($row = 3; $row <= $highestRow; $row++) {
                     $patientName = trim($worksheet->getCell("A" . $row)->getValue());
                     $dateAdmitted = $worksheet->getCell("K" . $row)->getValue();
                     $timeAdmitted = trim($worksheet->getCell("L" . $row)->getValue());
                     $dateDischarged = $worksheet->getCell("M" . $row)->getValue();
                     $timeDischarged = trim($worksheet->getCell("N" . $row)->getValue());
-                    $philhealthStatus = strtolower(trim($worksheet->getCell("F" . $row)->getValue()));
-
-                    if (!$patientName || !$dateAdmitted || !$timeAdmitted) continue;
+                    $philhealthStatus = strtolower(trim($worksheet->getCell("T" . $row)->getValue())); 
+                
+                    if (!$patientName || !$dateAdmitted) continue;
 
                     if (is_numeric($dateAdmitted)) {
-                        // echo "🔍 Raw Excel Date for $patientName: $dateAdmitted\n";  // Debugging
                         $dateAdmitted = Date::excelToDateTimeObject($dateAdmitted)->format("Y-m-d");
-                    }else {
-                        // echo "❌ Invalid or Non-Numeric DateAdmitted for $patientName: $dateAdmitted\n";  // Debugging
                     }
                     if ($dateDischarged && is_numeric($dateDischarged)) {
                         $dateDischarged = Date::excelToDateTimeObject($dateDischarged)->format("Y-m-d");
-                    }                                    
-
+                    }
+                
                     $timeAdmitted = convertExcelTime($timeAdmitted);
                     $timeDischarged = convertExcelTime($timeDischarged);
-
+                
                     $admitTimestamp = strtotime("$dateAdmitted $timeAdmitted");
                     $dischargeTimestamp = ($dateDischarged) ? strtotime("$dateDischarged $timeDischarged") : null;
 
-                    $isNHIP = (strcasecmp($philhealthStatus, "NHIP") == 0);
-
-                    // echo "<pre>";
-                        // echo "Patient: $patientName is counted on " . date("Y-m-d", $admitTimestamp) ."\n";
-                        // echo "Admitted: " . date("Y-m-d H:i:s", $admitTimestamp) . "\n";
-                        // echo "Discharged: " . ($dischargeTimestamp ? date("Y-m-d H:i:s", $dischargeTimestamp) : "Still Admitted") . "\n";
-                        // echo "Counted under: " . ($isNHIP ? "NHIP" : "Non-NHIP") . "\n";
-                        // echo "--------------------\n";
-                    // echo "</pre>";
-                    
-                    $originalDateAdmitted = $dateAdmitted;  
-
+                    $isNNHIP = (strpos($philhealthStatus, "NON PHIC") !== false); 
+                
                     for ($day = 1; $day <= 31; $day++) {
-                        $dateAdmitted = $originalDateAdmitted;  
-                    
-                        if (!$dateAdmitted || trim($dateAdmitted) === "") {
-                            // echo "⚠️ Skipping $patientName due to missing DateAdmitted!\n";
-                            continue;
-                        }
-                    
-                        // Convert if it's numeric (Excel timestamp)
-                        if (is_numeric($dateAdmitted)) {
-                            $dateAdmitted = Date::excelToDateTimeObject($dateAdmitted)->format("Y-m-d");
-                        } else {
-                            $dateAdmitted = trim($dateAdmitted);
-                        }
-
-                        $dateFormats = ["Y-m-d", "m/d/Y", "Y/m/d", "d-m-Y"];
-                        $dateObj = false;
-                        foreach ($dateFormats as $format) {
-                            $dateObj = DateTime::createFromFormat($format, $dateAdmitted);
-                            if ($dateObj) break;
-                        }
-                    
-                        if (!$dateObj) {
-                            // echo "⚠️ Error: Invalid date format for $patientName! Skipping...\n";
-                            continue;
-                        }
-
-                        $dateObj->modify("+".($day - 1)." days");
-                        $currentDate = $dateObj->format("Y-m-d");
-                    
+                        $monthStart = date("Y-m-01", $admitTimestamp); 
+                        $currentDate = date("Y-m-d", strtotime("+".($day-1)." days", strtotime($monthStart)));
                         $dayStart = strtotime("$currentDate 00:00:00");
                         $dayEnd = strtotime("$currentDate 23:59:59");
-                    
+                
                         if ($admitTimestamp <= $dayEnd && (!$dischargeTimestamp || $dischargeTimestamp >= $dayStart)) {
-                            if (!isset($patientCensus[$day])) {
-                                $patientCensus[$day] = ["Day" => 0, "NHIP" => 0, "NNHIP" => 0];
-                            }
-                    
                             $patientCensus[$day]["Day"] += 1;
-                    
-                            if ($isNHIP) {
-                                $patientCensus[$day]["NHIP"] += 1;
-                            } else {
+                            if ($isNNHIP) {
                                 $patientCensus[$day]["NNHIP"] += 1;
+                            } else {
+                                $patientCensus[$day]["NHIP"] += 1;
                             }
-                    
-                            // echo "<pre>";
-                            // echo "Day: $day | Date: $currentDate\n";
-                            // echo "Patient: $patientName | NHIP: " . ($isNHIP ? "YES" : "NO") . "\n";
-                            // echo "Current Day Count: " . $patientCensus[$day]["Day"] . "\n";
-                            // echo "NHIP Count: " . $patientCensus[$day]["NHIP"] . "\n";
-                            // echo "NNHIP Count: " . $patientCensus[$day]["NNHIP"] . "\n";
-                            // echo "----------------------------------\n";
-                            // echo "</pre>";
                         }
-                    }                    
-                }
+                    }
+                }                
             }
         }
     } catch (Exception $e) {
@@ -154,6 +100,66 @@ if ($latestFile) {
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="templates/download-removebg-preview.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .content-wrapper {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .table-container {
+            flex: 1;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+
+        .table-container {
+            width: 60%; 
+            height: 400px; 
+            overflow-y: auto; 
+            border: 1px solid #ccc;
+        }
+
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table-container thead {
+            position: sticky;
+            top: 0;
+            background: #ffffff;
+            z-index: 2;
+        }
+
+        .graph-container {
+            width: 40%; 
+            height: 400px; 
+            padding-left: 20px;
+        }
+
+        .graph-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .table-container th {
+            background-color:rgb(110, 134, 160);
+            color: white;
+            text-align: center;
+        }
+
+        .chart-container {
+            width: 50%;
+            min-width: 400px;
+            text-align: center;
+        }
+
+        #searchInput {
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
     <div class="container-fluid d-flex p-0">
@@ -173,9 +179,9 @@ if ($latestFile) {
                         <span class="ms-2">BicutanMed</span>
                     </a>
                     <?php if ($latestFile && $worksheet): ?>
-                        <form method="GET" class="mb-3">
-                            <label for="sheetSelect">Select Sheet:</label>
-                            <select name="sheet" id="sheetSelect" class="form-select" onchange="this.form.submit()">
+                        <form method="GET" class="mb-3 mt-2">
+                            <label for="sheetSelect" class="text-white">Select Sheet:</label>
+                            <select name="sheet" id="sheetSelect" class="form-select d-inline-block w-auto ms-2" onchange="this.form.submit()">
                                 <?php foreach ($sheetNames as $sheet): ?>
                                     <option value="<?php echo $sheet; ?>" <?php echo $sheet === $selectedSheet ? 'selected' : ''; ?>>
                                         <?php echo $sheet; ?>
@@ -184,7 +190,7 @@ if ($latestFile) {
                             </select>
                         </form>
                     <?php endif; ?>
-                    <a href="dashboard.php" class="btn btn-success ms-2 mt-2">Back to Dashboard</a>
+                    <a href="dashboard.php" class="btn btn-success ms-2 mt-2 mb-3">Back to Dashboard</a>
                     <div class="ms-auto">
                         <span class="navbar-text me-3">Welcome, <?php echo $_SESSION["username"]; ?>!</span>
                         <a href="logout.php" class="btn btn-danger">Logout</a>
@@ -193,68 +199,77 @@ if ($latestFile) {
             </nav>
 
             <div class="container mt-3">
-                <?php if ($selectedSheet): ?>
-                    <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
-                    <table class="table table-bordered">
-                        <thead>
+    <?php if ($selectedSheet): ?>
+        <h3>Summary for Sheet: <?php echo htmlspecialchars($selectedSheet); ?></h3>
+        <div class="d-flex">
+            <div class="table-container">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Day</th>
+                            <th>NHIP (PhilHealth)</th>
+                            <th>NNHIP (Non-PhilHealth)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($patientCensus as $day => $counts): ?>
                             <tr>
-                                <th>No.</th>
-                                <th>Day</th>
-                                <th>NHIP (PhilHealth)</th>
-                                <th>NNHIP (Non-PhilHealth)</th>
+                                <td><?= $day; ?></td>
+                                <td><?php echo htmlspecialchars($counts["Day"]); ?></td>
+                                <td><?php echo htmlspecialchars($counts["NHIP"]); ?></td>
+                                <td><?php echo htmlspecialchars($counts["NNHIP"]); ?></td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($patientCensus as $day => $counts): ?>
-                                <tr>
-                                    <td><?= $day; ?></td>
-                                    <td><?php echo htmlspecialchars($counts["Day"]); ?></td>
-                                    <td><?php echo htmlspecialchars($counts["NHIP"]); ?></td>
-                                    <td><?php echo htmlspecialchars($counts["NNHIP"]); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
 
-                    <h4>Graphs Overview</h4>
-                    <canvas id="summaryChart"></canvas>
-
-                    <script>
-                        document.addEventListener("DOMContentLoaded", function() {
-                            const ctx = document.getElementById('summaryChart').getContext('2d');
-                            const labels = <?php echo json_encode(array_keys($patientCensus)); ?>;
-                            const nhipData = <?php echo json_encode(array_column($patientCensus, "NHIP")); ?>;
-                            const nnhipData = <?php echo json_encode(array_column($patientCensus, "NNHIP")); ?>;
-
-                            new Chart(ctx, {
-                                type: 'bar',
-                                data: {
-                                    labels: labels,
-                                    datasets: [
-                                        { label: 'NHIP', data: nhipData, backgroundColor: 'blue' },
-                                        { label: 'NNHIP', data: nnhipData, backgroundColor: 'red' }
-                                    ]
-                                }
-                            });
-                        });
-                    </script>
-                <?php endif; ?>
+            <div class="graph-container">
+                <h4>Graphs Overview</h4>
+                <canvas id="summaryChart"></canvas>
             </div>
         </div>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const ctx = document.getElementById('summaryChart').getContext('2d');
+                const labels = <?php echo json_encode(array_keys($patientCensus)); ?>;
+                const nhipData = <?php echo json_encode(array_column($patientCensus, "NHIP")); ?>;
+                const nnhipData = <?php echo json_encode(array_column($patientCensus, "NNHIP")); ?>;
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'NHIP', data: nhipData, backgroundColor: 'blue' },
+                            { label: 'NNHIP', data: nnhipData, backgroundColor: 'red' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            });
+        </script>
+        <?php endif; ?>
+        </div>
     </div>
-</body>
-</html>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-$(document).ready(function() {
-    $("#searchInput").on("keyup", function() {
-        let value = $(this).val().toLowerCase().trim();
-        
-        $("#excelTable tbody tr").each(function() {
-            let rowText = $(this).find("td").text().toLowerCase().trim();
-            $(this).toggle(rowText.indexOf(value) > -1);
+</div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $("#searchInput").on("keyup", function() {
+                let value = $(this).val().toLowerCase().trim();
+
+                $("#excelTable tbody tr").each(function() {
+                    let rowText = $(this).text().toLowerCase();
+                    $(this).toggle(rowText.indexOf(value) > -1);
+                });
+            });
         });
-    });
-});
-</script>
+    </script>
+</body>
 </html>
