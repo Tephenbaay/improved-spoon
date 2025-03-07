@@ -49,9 +49,6 @@ if ($latestFile) {
             <input type="text" id="searchInput" class="form-control mt-3" placeholder="Search...">
             <a href="dashboard.php" class="btn btn-primary w-100 mt-3">Dashboard</a>
             <a href="summary.php" class="btn btn-primary w-100 mt-3">Summary</a>
-            <?php if ($selectedSheet && $latestFile): ?>
-                <a href="export_summary.php?sheet=<?php echo urlencode($selectedSheet); ?>" class="btn btn-warning w-100 mt-3">Export Summary</a>
-            <?php endif; ?>
             <button id="print-button" class ="btn btn-warning w-100 mt-3">Print MMHR Summary</button>
         </div>
 
@@ -227,12 +224,19 @@ if ($latestFile) {
         calculateTotals(); 
     });
     document.getElementById("print-button").addEventListener("click", function () {
-    let originalTable = document.getElementById("data-table"); 
-    let clonedTable = originalTable.cloneNode(true); 
-    let clonedRows = clonedTable.getElementsByTagName("tr");
-    let totalRow = clonedTable.querySelector("#total-row");
+        let originalTable = document.getElementById("data-table"); 
+        let clonedTable = originalTable.cloneNode(true); 
+        let clonedRows = clonedTable.getElementsByTagName("tr");
+        let totalRow = clonedTable.querySelector("#total-row"); 
 
-    if (clonedRows.length !== 31 && totalRow) {
+    if (clonedRows.length === 31) {
+        if (!totalRow) {
+            totalRow = document.createElement("tr");
+            totalRow.id = "total-row";
+            totalRow.innerHTML = `<td colspan="100%" style="background-color: #007bff; color: white; font-weight: bold; text-align: center;">TOTAL</td>`;
+            clonedTable.appendChild(totalRow);
+        }
+    } else if (totalRow) {
         totalRow.remove();
     }
 
@@ -305,6 +309,7 @@ if ($latestFile) {
                         background-color: #007bff !important;
                         color: white !important;
                         font-weight: bold;
+                        text-align: center;
                         position: sticky;
                         bottom: 0;
                     }
@@ -322,6 +327,16 @@ if ($latestFile) {
     `);
 
     printWindow.document.close();
+});
+    $(document).ready(function() {
+        $("#searchInput").on("keyup", function() {
+            let value = $(this).val().toLowerCase().trim();
+
+            $("#excelTable tbody tr").each(function() {
+                let rowText = $(this).text().toLowerCase();
+                $(this).toggle(rowText.indexOf(value) > -1);
+            });
+        });
 });
 </script>
 </body>

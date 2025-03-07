@@ -95,7 +95,6 @@ if ($latestFile) {
                             $patientCensus[$index + 1]["NNHIP"] += 1;
                         }
 
-                        // Update the total for each row
                         $patientCensus[$index + 1]["Total"] = $patientCensus[$index + 1]["NHIP"] + $patientCensus[$index + 1]["NNHIP"];
                     }
                 }                    
@@ -184,8 +183,6 @@ if ($latestFile) {
             <?php if ($selectedSheet && $latestFile): ?>
                 <a href="export_summary.php?sheet=<?php echo urlencode($selectedSheet); ?>" class="btn btn-warning w-100 mt-3">Export Summary</a>
             <?php endif; ?>
-
-            <!-- Add MMHR Button -->
             <a href="mmhr.php" class="btn btn-primary w-100 mt-3">MMHR</a>
         </div>
 
@@ -231,37 +228,34 @@ if ($latestFile) {
                         </tr>
                     </thead>
                     <tbody>
-    <?php 
-    $totalNHIP = 0;
-    $totalNNHIP = 0;
-    $totalOverall = 0;
+                    <?php 
+                        $totalNHIP = 0;
+                        $totalNNHIP = 0;
+                        $totalOverall = 0;
 
-    foreach ($patientCensus as $row): 
-        $totalNHIP += $row["NHIP"];
-        $totalNNHIP += $row["NNHIP"];
-        $totalOverall += $row["Total"];
-    ?>
-        <tr>
-            <td><?= $row["No"]; ?></td>
-            <td><?= $row["NHIP"]; ?></td>
-            <td><?= $row["NNHIP"]; ?></td>
-            <td><?= $row["Total"]; ?></td>
-        </tr>
-    <?php endforeach; ?>
+                    foreach ($patientCensus as $row): 
+                        $totalNHIP += $row["NHIP"];
+                        $totalNNHIP += $row["NNHIP"];
+                        $totalOverall += $row["Total"];
+                    ?>
+                        <tr>
+                            <td><?= $row["No"]; ?></td>
+                            <td><?= $row["NHIP"]; ?></td>
+                            <td><?= $row["NNHIP"]; ?></td>
+                            <td><?= $row["Total"]; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    <tr>
+                        <td colspan="4" class="text-center fw-bold">*** NOTHING FOLLOWS ***</td>
+                    </tr>
 
-    <!-- NOTHING FOLLOWS row -->
-    <tr>
-        <td colspan="4" class="text-center fw-bold">*** NOTHING FOLLOWS ***</td>
-    </tr>
-
-    <!-- TOTAL row -->
-    <tr class="fw-bold">
-        <td>Total</td>
-        <td><?= $totalNHIP; ?></td>
-        <td><?= $totalNNHIP; ?></td>
-        <td><?= $totalOverall; ?></td>
-    </tr>
-</tbody>
+                    <tr class="fw-bold">
+                        <td>Total</td>
+                        <td><?= $totalNHIP; ?></td>
+                        <td><?= $totalNNHIP; ?></td>
+                        <td><?= $totalOverall; ?></td>
+                    </tr>
+                </tbody>
 
                 </table>
             </div>
