@@ -22,15 +22,6 @@ $uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
 $latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
 
 $patientCensus = [];
-for ($day = 1; $day <= 31; $day++) {
-    $patientCensus[$day] = [
-        "No" => $day, 
-        "Day" => 0, 
-        "NHIP" => 0, 
-        "NNHIP" => 0 
-    ];
-}
-
 $sheetNames = [];
 
 if ($latestFile) {
@@ -69,21 +60,45 @@ if ($latestFile) {
                     $dischargeTimestamp = ($dateDischarged) ? strtotime("$dateDischarged $timeDischarged") : null;
 
                     $isNHIP = (is_numeric($philhealthAmount) && floatval($philhealthAmount) > 0);
+                    $isNNHIP = ($membershipType === "non phic");
 
-                    $countDay = date("Y-m-d", strtotime("+1 day", strtotime($dateAdmitted)));
-                    $countDayStart = strtotime("$countDay 00:00:00");
-                    $countDayEnd = strtotime("$countDay 23:59:59");
-
-                    if (!$dischargeTimestamp || $dischargeTimestamp > $countDayStart) {
-                        $dayNumber = (int)date("d", $countDayStart);
-                        $patientCensus[$dayNumber]["Day"] += 1;
-                        if ($isNHIP) {
-                            $patientCensus[$dayNumber]["NHIP"] += 1;
-                        } else {
-                            $patientCensus[$dayNumber]["NNHIP"] += 1;
-                        }
+                    if (!$dischargeTimestamp || $dischargeTimestamp < $admitTimestamp) {
+                        $dischargeTimestamp = $admitTimestamp;
                     }
-                }                
+
+                    $startDay = strtotime(date("Y-m-d", strtotime("+1 day", $admitTimestamp)) . " 00:00:00");
+                    $endDay = strtotime(date("Y-m-d", $dischargeTimestamp) . " 00:00:00");
+
+                    $daysCounted = [];
+
+                    while ($startDay <= $endDay) {
+                        $dayNumber = (int)date("j", $startDay);
+                        if (!in_array($dayNumber, $daysCounted)) {
+                            $daysCounted[] = $dayNumber;
+                        }
+                        $startDay = strtotime("+1 day", $startDay);
+                    }
+
+                    foreach ($daysCounted as $index => $dayNumber) {
+                        if (!isset($patientCensus[$index + 1])) {
+                            $patientCensus[$index + 1] = [
+                                "No" => $index + 1, 
+                                "NHIP" => 0, 
+                                "NNHIP" => 0, 
+                                "Total" => 0
+                            ];
+                        }
+
+                        if ($isNHIP) {
+                            $patientCensus[$index + 1]["NHIP"] += 1;
+                        } elseif ($isNNHIP) {
+                            $patientCensus[$index + 1]["NNHIP"] += 1;
+                        }
+
+                        // Update the total for each row
+                        $patientCensus[$index + 1]["Total"] = $patientCensus[$index + 1]["NHIP"] + $patientCensus[$index + 1]["NNHIP"];
+                    }
+                }                    
             }
         }
     } catch (Exception $e) {
@@ -91,6 +106,7 @@ if ($latestFile) {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -168,6 +184,9 @@ if ($latestFile) {
             <?php if ($selectedSheet && $latestFile): ?>
                 <a href="export_summary.php?sheet=<?php echo urlencode($selectedSheet); ?>" class="btn btn-warning w-100 mt-3">Export Summary</a>
             <?php endif; ?>
+
+            <!-- Add MMHR Button -->
+            <a href="mmhr.php" class="btn btn-primary w-100 mt-3">MMHR</a>
         </div>
 
         <div class="main-content w-100">
@@ -205,22 +224,45 @@ if ($latestFile) {
                 <table class="table table-bordered">
                     <thead>
                         <tr>
-                            <th>No.</th>
-                            <th>Day</th>
+                            <th>Date</th>
                             <th>NHIP (PhilHealth)</th>
                             <th>NNHIP (Non-PhilHealth)</th>
+                            <th>Total</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($patientCensus as $day => $counts): ?>
-                            <tr>
-                                <td><?= $day; ?></td>
-                                <td><?php echo htmlspecialchars($counts["Day"]); ?></td>
-                                <td><?php echo htmlspecialchars($counts["NHIP"]); ?></td>
-                                <td><?php echo htmlspecialchars($counts["NNHIP"]); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
+    <?php 
+    $totalNHIP = 0;
+    $totalNNHIP = 0;
+    $totalOverall = 0;
+
+    foreach ($patientCensus as $row): 
+        $totalNHIP += $row["NHIP"];
+        $totalNNHIP += $row["NNHIP"];
+        $totalOverall += $row["Total"];
+    ?>
+        <tr>
+            <td><?= $row["No"]; ?></td>
+            <td><?= $row["NHIP"]; ?></td>
+            <td><?= $row["NNHIP"]; ?></td>
+            <td><?= $row["Total"]; ?></td>
+        </tr>
+    <?php endforeach; ?>
+
+    <!-- NOTHING FOLLOWS row -->
+    <tr>
+        <td colspan="4" class="text-center fw-bold">*** NOTHING FOLLOWS ***</td>
+    </tr>
+
+    <!-- TOTAL row -->
+    <tr class="fw-bold">
+        <td>Total</td>
+        <td><?= $totalNHIP; ?></td>
+        <td><?= $totalNNHIP; ?></td>
+        <td><?= $totalOverall; ?></td>
+    </tr>
+</tbody>
+
                 </table>
             </div>
             <div class="graph-container">

@@ -1,0 +1,90 @@
+.content-wrapper {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.table-container {
+    flex: 1;
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+}
+
+.table-container {
+    width: 60%; 
+    height: 400px; 
+    overflow-y: auto; 
+    border: 1px solid #ccc;
+}
+
+.table-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-container thead {
+    position: sticky;
+    top: 0;
+    background: #ffffff;
+    z-index: 2;
+}
+
+.graph-container {
+    width: 40%; 
+    height: 400px; 
+    padding-left: 20px;
+}
+
+.graph-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.table-container th {
+    background-color:rgb(110, 134, 160);
+    color: white;
+    text-align: center;
+}
+
+.chart-container {
+    width: 50%;
+    min-width: 400px;
+    text-align: center;
+}
+
+#searchInput {
+    margin-bottom: 10px;
+    
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+table, th, td {
+    border: 1px solid black !important; 
+    border-collapse: collapse; 
+    text-align: center;
+    padding: 8px;
+}
+th, td {
+    text-align: center;
+    vertical-align: middle;
+    border: 1px solid black !important;
+    border-right: 1px solid black !important; 
+    border-left: 1px solid black !important;   
+}
+th {
+    color: white;
+    font-weight: bold;
+}
+thead tr:first-child th {
+    background-color: #d9d9d9; 
+    font-size: 18px;
+}
+tfoot {
+    position: sticky;
+    bottom: 0;
+    background-color: white;
+    font-weight: bold;
+}
