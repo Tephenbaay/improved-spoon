@@ -13,7 +13,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 $uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
 $latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
 $summaryData = array_fill(1, 31, ["govt" => 0, "private" => 0, "self_employed" => 0, "ofw" => 0,
- "owwa" => 0, "sc" => 0, "pwd" => 0, "indigent" => 0]);
+ "owwa" => 0, "sc" => 0, "pwd" => 0, "indigent" => 0, "pensioners" => 0]);
 
 $selectedSheet = isset($_GET['sheet']) ? $_GET['sheet'] : null;
 $sheetNames = [];
@@ -55,6 +55,8 @@ if ($latestFile) {
                         $summaryData[$admissionDate]["pwd"]++;
                     }elseif (stripos($memberCategory, "indigent") !== false) {
                         $summaryData[$admissionDate]["indigent"]++;
+                    }elseif (stripos($memberCategory, "pensioners") !== false) {
+                        $summaryData[$admissionDate]["pensioners"]++;
                     }
                 }
             }
@@ -162,7 +164,13 @@ if ($latestFile) {
                             <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["sc"] : 0; ?></td>
                             <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["pwd"] : 0; ?></td>
                             <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["indigent"] : 0; ?></td>
-                            <?php for ($j = 1; $j <= 8; $j++): ?>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["pensioners"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? 
+                                $summaryData[$i]["govt"] + $summaryData[$i]["private"] + $summaryData[$i]["self_employed"] +
+                                $summaryData[$i]["ofw"] + $summaryData[$i]["owwa"] + $summaryData[$i]["sc"] +
+                                $summaryData[$i]["pwd"] + $summaryData[$i]["indigent"] + $summaryData[$i]["pensioners"] : 0;
+                            ?></td>
+                            <?php for ($j = 1; $j <= 6; $j++): ?>
                                 <td></td>
                             <?php endfor; ?>
                         </tr>
@@ -179,8 +187,12 @@ if ($latestFile) {
             <th><?php echo array_sum(array_column($summaryData, "sc")); ?></th>
             <th><?php echo array_sum(array_column($summaryData, "pwd")); ?></th>
             <th><?php echo array_sum(array_column($summaryData, "indigent")); ?></th>
-            <th>0</th>
-            <th>0</th>
+            <th><?php echo array_sum(array_column($summaryData, "pensioners")); ?></th>
+            <th><?php echo array_sum(array_map(function($data) {
+                return $data["govt"] + $data["private"] + $data["self_employed"] + 
+                    $data["ofw"] + $data["owwa"] + $data["sc"] + 
+                    $data["pwd"] + $data["indigent"] + $data["pensioners"];
+            }, $summaryData)); ?></th>
             <th>0</th>
             <th>0</th>
             <th>0</th>
