@@ -39,7 +39,11 @@ if ($latestFile) {
 
                 if (count($rowData) < 13) continue;
 
-                $admissionDate = isset($rowData[2]) ? Date::excelToDateTimeObject($rowData[2])->format("j") : null;
+                // Ensure admissionDate is a valid numeric value before converting
+                $admissionDate = isset($rowData[2]) && is_numeric($rowData[2]) 
+                    ? Date::excelToDateTimeObject($rowData[2])->format("j") 
+                    : null;
+                
                 $memberCategory = $rowData[12] ?? "";
 
                 if ($admissionDate && is_numeric($admissionDate) && $admissionDate >= 1 && $admissionDate <= 31) {
@@ -49,13 +53,17 @@ if ($latestFile) {
                         $summaryData[$admissionDate]["private"]++;
                     } elseif (stripos($memberCategory, "Self earning Individual") !== false) {
                         $summaryData[$admissionDate]["self_employed"]++;
+                    } elseif (stripos($memberCategory, "ofw") !== false) {
+                        $summaryData[$admissionDate]["ofw"]++;
+                    } elseif (stripos($memberCategory, "migrant worker") !== false) {
+                        $summaryData[$admissionDate]["owwa"]++;
                     } elseif (stripos($memberCategory, "senior citizen") !== false) {
                         $summaryData[$admissionDate]["sc"]++;
-                    }elseif (stripos($memberCategory, "pwd") !== false) {
+                    } elseif (stripos($memberCategory, "pwd") !== false) {
                         $summaryData[$admissionDate]["pwd"]++;
-                    }elseif (stripos($memberCategory, "indigent") !== false) {
+                    } elseif (stripos($memberCategory, "indigent") !== false) {
                         $summaryData[$admissionDate]["indigent"]++;
-                    }elseif (stripos($memberCategory, "pensioners") !== false) {
+                    } elseif (stripos($memberCategory, "pensioners") !== false) {
                         $summaryData[$admissionDate]["pensioners"]++;
                     }
                 }
@@ -66,6 +74,7 @@ if ($latestFile) {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -207,6 +216,15 @@ if ($latestFile) {
     </div>
     </div>
 <script>
+    document.querySelectorAll("total-row").forEach(th => {
+    if (th.textContent.trim() === "govt" || th.textContent.trim() === "private"
+        || th.textContent.trim() === "self_employed" || th.textContent.trim() === "ofw"
+        || th.textContent.trim() === "owwa" || th.textContent.trim() === "sc" 
+        || th.textContent.trim() === "pwd") {
+        th.style.backgroundColor = "black";
+        th.style.color = "white";
+    }
+});
     document.querySelectorAll("th").forEach(th => {
     if (th.textContent.trim() === "GOV'T" || th.textContent.trim() === "PRIVATE"
         || th.textContent.trim() === "SELF EMPLOYED" || th.textContent.trim() === "OFW"
