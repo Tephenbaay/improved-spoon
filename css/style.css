@@ -78,6 +78,7 @@ html, body {
 }
 .table-bordered th, .table-bordered td {
     border: 2px solid black !important; 
+    border-right: 1px solid black !important;
     text-align: center;
     padding: 8px;
 }

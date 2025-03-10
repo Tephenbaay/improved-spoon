@@ -29,6 +29,17 @@ if ($latestFile) {
         $spreadsheet = IOFactory::load($latestFile);
         $sheetNames = $spreadsheet->getSheetNames();
 
+        try {
+            $spreadsheet = IOFactory::load($latestFile);
+            $sheetNames = $spreadsheet->getSheetNames();
+            if (!$selectedSheet || !in_array($selectedSheet, $sheetNames)) {
+                $selectedSheet = $sheetNames[0] ?? null; 
+            }
+            $worksheet = $selectedSheet ? $spreadsheet->getSheetByName($selectedSheet) : null;
+        } catch (Exception $e) {
+            $message = "Error loading Excel file: " . $e->getMessage();
+        }
+        
         if (in_array($selectedSheet, $sheetNames)) {
             $worksheet = $spreadsheet->getSheetByName($selectedSheet);
             if ($worksheet) {
@@ -193,6 +204,7 @@ if ($latestFile) {
                         <img src="templates/download-removebg-preview.png" class="logo" alt="Logo"> 
                         <span class="ms-2">BicutanMed</span>
                     </a>
+                    <?php if ($latestFile): ?>
                     <?php if ($latestFile && $worksheet): ?>
                         <form method="GET" class="mb-3 mt-2">
                             <label for="sheetSelect" class="text-white">Select Sheet:</label>
@@ -204,6 +216,7 @@ if ($latestFile) {
                                 <?php endforeach; ?>
                             </select>
                         </form>
+                    <?php endif; ?>
                     <?php endif; ?>
                     <a href="dashboard.php" class="btn btn-success ms-2 mt-2 mb-3">Back to Dashboard</a>
                     <div class="ms-auto">

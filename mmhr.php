@@ -12,7 +12,8 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 $uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
 $latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
-$summaryData = [];
+$summaryData = array_fill(1, 31, ["govt" => 0, "private" => 0, "self_employed" => 0, "ofw" => 0,
+ "owwa" => 0, "sc" => 0, "pwd" => 0, "indigent" => 0]);
 
 $selectedSheet = isset($_GET['sheet']) ? $_GET['sheet'] : null;
 $sheetNames = [];
@@ -21,18 +22,48 @@ if ($latestFile) {
     try {
         $spreadsheet = IOFactory::load($latestFile);
         $sheetNames = $spreadsheet->getSheetNames();
+        if (!$selectedSheet || !in_array($selectedSheet, $sheetNames)) {
+            $selectedSheet = $sheetNames[0] ?? null; 
+        }
+        $worksheet = $selectedSheet ? $spreadsheet->getSheetByName($selectedSheet) : null;
 
-        if ($selectedSheet) {
-            $worksheet = $spreadsheet->getSheetByName($selectedSheet);
-        } else {
-            $worksheet = $spreadsheet->getActiveSheet();
+        if ($worksheet) {
+            foreach ($worksheet->getRowIterator(2) as $row) {
+                $cellIterator = $row->getCellIterator();
+                $cellIterator->setIterateOnlyExistingCells(true);
+
+                $rowData = [];
+                foreach ($cellIterator as $cell) {
+                    $rowData[] = $cell->getValue();
+                }
+
+                if (count($rowData) < 13) continue;
+
+                $admissionDate = isset($rowData[2]) ? Date::excelToDateTimeObject($rowData[2])->format("j") : null;
+                $memberCategory = $rowData[12] ?? "";
+
+                if ($admissionDate && is_numeric($admissionDate) && $admissionDate >= 1 && $admissionDate <= 31) {
+                    if (stripos($memberCategory, "Formal-Gov") !== false) {
+                        $summaryData[$admissionDate]["govt"]++;
+                    } elseif (stripos($memberCategory, "Formal-Private") !== false) {
+                        $summaryData[$admissionDate]["private"]++;
+                    } elseif (stripos($memberCategory, "Self earning Individual") !== false) {
+                        $summaryData[$admissionDate]["self_employed"]++;
+                    } elseif (stripos($memberCategory, "senior citizen") !== false) {
+                        $summaryData[$admissionDate]["sc"]++;
+                    }elseif (stripos($memberCategory, "pwd") !== false) {
+                        $summaryData[$admissionDate]["pwd"]++;
+                    }elseif (stripos($memberCategory, "indigent") !== false) {
+                        $summaryData[$admissionDate]["indigent"]++;
+                    }
+                }
+            }
         }
     } catch (Exception $e) {
-        $message = "Error processing the Excel file: " . $e->getMessage();
+        $message = "Error loading Excel file: " . $e->getMessage();
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,7 +108,7 @@ if ($latestFile) {
                     </div>
                 </div>
             </nav>
-            <div class="container mt-4">
+        <div class="container mt-4">
         <h2 class="text-center mb-3">MMHR Summary Table</h2>
         <div class="table-responsive">
             <table class="table table-bordered" id="data-table">
@@ -99,7 +130,8 @@ if ($latestFile) {
                     <th colspan="5">INDIVIDUAL PAYING</th>
                     <th rowspan="2">INDIGENT</th>
                     <th rowspan="2">PENSIONERS</th>
-                    <th colspan="2">NHIP & NON-NHIP</th>
+                    <th rowspan="2">NHIP</th>
+                    <th rowspan="2">NON-NHIP</th>
                     <th rowspan="2">TOTAL ADMISSION</th>
                     <th colspan="2">TOTAL DISCHARGES</th>
                     <th colspan="2">ACCUMULATED PATIENTS LOHS</th>
@@ -116,15 +148,21 @@ if ($latestFile) {
                     <th>NON-NHIP</th>
                     <th>NHIP</th>
                     <th>NON-NHIP</th>
-                    <th>NHIP</th>
-                    <th>NON-NHIP</th>
                 </tr>
             </thead>
                 <tbody>
                     <?php for ($i = 1; $i <= 31; $i++): ?>
                         <tr>
                             <td><?php echo $i; ?></td>
-                            <?php for ($j = 1; $j <= 14; $j++): ?>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["govt"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["private"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["self_employed"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["ofw"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["owwa"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["sc"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["pwd"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["indigent"] : 0; ?></td>
+                            <?php for ($j = 1; $j <= 8; $j++): ?>
                                 <td></td>
                             <?php endfor; ?>
                         </tr>
@@ -133,14 +171,14 @@ if ($latestFile) {
                 <tfoot>
         <tr id="total-row">
             <th>Total</th>
-            <th>0</th> 
-            <th>0</th>
-            <th>0</th>
-            <th>0</th>
-            <th>0</th>
-            <th>0</th>
-            <th>0</th>
-            <th>0</th>
+            <th><?php echo array_sum(array_column($summaryData, "govt")); ?></th> 
+            <th><?php echo array_sum(array_column($summaryData, "private")); ?></th>
+            <th><?php echo array_sum(array_column($summaryData, "self_employed")); ?></th>
+            <th><?php echo array_sum(array_column($summaryData, "ofw")); ?></th>
+            <th><?php echo array_sum(array_column($summaryData, "owwa")); ?></th>
+            <th><?php echo array_sum(array_column($summaryData, "sc")); ?></th>
+            <th><?php echo array_sum(array_column($summaryData, "pwd")); ?></th>
+            <th><?php echo array_sum(array_column($summaryData, "indigent")); ?></th>
             <th>0</th>
             <th>0</th>
             <th>0</th>
@@ -188,41 +226,19 @@ if ($latestFile) {
     document.addEventListener("DOMContentLoaded", function () {
         let headers = document.querySelectorAll("thead tr:nth-child(3) th"); 
 
-        headers[9].style.backgroundColor = "orange"; 
-        headers[10].style.backgroundColor = "orange"; 
+        headers[7].style.backgroundColor = "orange"; 
+        headers[8].style.backgroundColor = "orange"; 
 
-        headers[11].style.backgroundColor = "blue"; 
-        headers[12].style.backgroundColor = "blue"; 
+        headers[9].style.backgroundColor = "blue"; 
+        headers[10].style.backgroundColor = "blue"; 
 
-        headers[7].style.color = "white"; 
-        headers[8].style.color = "white"; 
+        headers[7].style.color = "black"; 
+        headers[8].style.color = "black"; 
         headers[9].style.color = "black";
         headers[10].style.color = "black";
         headers[11].style.color = "black";
         headers[12].style.color = "black";
 });
-    document.addEventListener("DOMContentLoaded", function () {
-        function calculateTotals() {
-            let table = document.getElementById("data-table");
-            let tbody = table.querySelector("tbody");
-            let totalRow = document.getElementById("total-row");
-            let numCols = totalRow.children.length - 1;
-
-            let totals = new Array(numCols).fill(0);
-
-            tbody.querySelectorAll("tr").forEach(row => {
-                row.querySelectorAll("td").forEach((cell, index) => {
-                    totals[index] += parseFloat(cell.textContent) || 0;
-                });
-            });
-
-            totalRow.querySelectorAll("th:not(:first-child)").forEach((cell, index) => {
-                cell.textContent = totals[index];
-            });
-        }
-
-        calculateTotals(); 
-    });
     document.getElementById("print-button").addEventListener("click", function () {
         let originalTable = document.getElementById("data-table"); 
         let clonedTable = originalTable.cloneNode(true); 
