@@ -13,7 +13,8 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 $uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
 $latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
 $summaryData = array_fill(1, 31, ["govt" => 0, "private" => 0, "self_employed" => 0, "ofw" => 0,
- "owwa" => 0, "sc" => 0, "pwd" => 0, "indigent" => 0, "pensioners" => 0]);
+ "owwa" => 0, "sc" => 0, "pwd" => 0, "indigent" => 0, "pensioners" => 0,"non-nhip" => 0,"total_admission" => 0, 
+ "nhip_discharges" => 0, "non_nhip_discharges" => 0]);
 
 $selectedSheet = isset($_GET['sheet']) ? $_GET['sheet'] : null;
 $sheetNames = [];
@@ -39,7 +40,6 @@ if ($latestFile) {
 
                 if (count($rowData) < 13) continue;
 
-                // Ensure admissionDate is a valid numeric value before converting
                 $admissionDate = isset($rowData[2]) && is_numeric($rowData[2]) 
                     ? Date::excelToDateTimeObject($rowData[2])->format("j") 
                     : null;
@@ -47,28 +47,102 @@ if ($latestFile) {
                 $memberCategory = $rowData[12] ?? "";
 
                 if ($admissionDate && is_numeric($admissionDate) && $admissionDate >= 1 && $admissionDate <= 31) {
-                    if (stripos($memberCategory, "Formal-Gov") !== false) {
+                    if (stripos($memberCategory, "Formal-Government") !== false) {
                         $summaryData[$admissionDate]["govt"]++;
                     } elseif (stripos($memberCategory, "Formal-Private") !== false) {
                         $summaryData[$admissionDate]["private"]++;
-                    } elseif (stripos($memberCategory, "Self earning Individual") !== false) {
+                    } elseif (stripos($memberCategory, "Self earning Individual") !== false || stripos($memberCategory, "Informal Sector") !== false
+                    || stripos($memberCategory, "Indirect Contributor") !== false) {
                         $summaryData[$admissionDate]["self_employed"]++;
                     } elseif (stripos($memberCategory, "ofw") !== false) {
                         $summaryData[$admissionDate]["ofw"]++;
                     } elseif (stripos($memberCategory, "migrant worker") !== false) {
                         $summaryData[$admissionDate]["owwa"]++;
-                    } elseif (stripos($memberCategory, "senior citizen") !== false) {
+                    } elseif (stripos($memberCategory, "senior citizen") !== false || stripos($memberCategory, "lifetime member") !== false) {
                         $summaryData[$admissionDate]["sc"]++;
                     } elseif (stripos($memberCategory, "pwd") !== false) {
                         $summaryData[$admissionDate]["pwd"]++;
-                    } elseif (stripos($memberCategory, "indigent") !== false) {
+                    } elseif (stripos($memberCategory, "indigent") !== false || stripos($memberCategory, "4PS/MCCT") !== false
+                    || stripos($memberCategory, "SPONSORED- POS FINANCIALLY INCAPABLE") !== false) {
                         $summaryData[$admissionDate]["indigent"]++;
                     } elseif (stripos($memberCategory, "pensioners") !== false) {
                         $summaryData[$admissionDate]["pensioners"]++;
+                    }   elseif (stripos($memberCategory, "non-nhip") !== false) {
+                        $summaryData[$admissionDate]["non-nhip"]++;
                     }
                 }
             }
         }
+
+        if (in_array("admission (JAN)", $sheetNames)) {
+            $admissionSheet = $spreadsheet->getSheetByName("admission (JAN)");
+            foreach ($admissionSheet->getRowIterator(2) as $row) {
+                $cellIterator = $row->getCellIterator();
+                $cellIterator->setIterateOnlyExistingCells(true);
+        
+                foreach ($cellIterator as $cell) {
+                    if ($cell->getColumn() == 'H') {
+                        $cellValue = $cell->getValue();
+                        $admissionDate = is_numeric($cellValue)
+                            ? Date::excelToDateTimeObject($cellValue)->format("j")
+                            : (strtotime($cellValue) ? date("j", strtotime($cellValue)) : null);
+        
+                        if ($admissionDate && is_numeric($admissionDate) && $admissionDate >= 1 && $admissionDate <= 31) {
+                            $summaryData[$admissionDate]["total_admission"]++;
+                        }
+                    }
+                }
+            }
+        }    
+        if (in_array("DISCHARGE(BILLING)", $sheetNames)) {
+            $dischargeSheet = $spreadsheet->getSheetByName("DISCHARGE(BILLING)");
+
+            foreach ($dischargeSheet->getRowIterator(3) as $row) {
+                $cellIterator = $row->getCellIterator();
+                $cellIterator->setIterateOnlyExistingCells(true);
+
+                $rowData = [];
+                foreach ($cellIterator as $cell) {
+                    $rowData[] = $cell->getValue();
+                }
+
+                if (count($rowData) < 10) continue;
+
+                $admitDate = isset($rowData[2]) && is_numeric($rowData[2]) 
+                    ? Date::excelToDateTimeObject($rowData[2]) 
+                    : null;
+
+                $admitTime = isset($rowData[3]) ? strtotime($rowData[3]) : null;
+                $dischargeDate = isset($rowData[4]) && is_numeric($rowData[4]) 
+                    ? Date::excelToDateTimeObject($rowData[4]) 
+                    : null;
+
+                $dischargeTime = isset($rowData[5]) ? strtotime($rowData[5]) : null;
+                $membershipType = $rowData[6] ?? "";
+
+                if ($admitDate && $dischargeDate) {
+                    $midnightCutoff = clone $admitDate;
+                    $midnightCutoff->setTime(0, 0, 0);
+                
+                    $dischargeDay = $dischargeDate->format("j");
+
+                    if (!isset($summaryData[$dischargeDay])) {
+                        $summaryData[$dischargeDay] = [
+                            "non_nhip_discharges" => 0,
+                            "nhip_discharges" => 0
+                        ];
+                    }
+
+                    $membershipType = trim($membershipType);
+                
+                    if (preg_match('/\bNON\s?PHIC\b/i', $membershipType)) {
+                        $summaryData[$dischargeDay]["non_nhip_discharges"]++;
+                    } else {
+                        $summaryData[$dischargeDay]["nhip_discharges"]++;
+                    }
+                }                
+            }
+        }    
     } catch (Exception $e) {
         $message = "Error loading Excel file: " . $e->getMessage();
     }
@@ -179,7 +253,16 @@ if ($latestFile) {
                                 $summaryData[$i]["ofw"] + $summaryData[$i]["owwa"] + $summaryData[$i]["sc"] +
                                 $summaryData[$i]["pwd"] + $summaryData[$i]["indigent"] + $summaryData[$i]["pensioners"] : 0;
                             ?></td>
-                            <?php for ($j = 1; $j <= 6; $j++): ?>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["non-nhip"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["total_admission"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["nhip_discharges"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["non_nhip_discharges"] : 0; ?></td>
+                            <td><?php echo isset($summaryData[$i]) ? 
+                                $summaryData[$i]["govt"] + $summaryData[$i]["private"] + $summaryData[$i]["self_employed"] +
+                                $summaryData[$i]["ofw"] + $summaryData[$i]["owwa"] + $summaryData[$i]["sc"] +
+                                $summaryData[$i]["pwd"] + $summaryData[$i]["indigent"] + $summaryData[$i]["pensioners"] : 0;
+                            ?></td>
+                            <?php for ($j = 1; $j <= 1; $j++): ?>
                                 <td></td>
                             <?php endfor; ?>
                         </tr>
@@ -202,11 +285,15 @@ if ($latestFile) {
                     $data["ofw"] + $data["owwa"] + $data["sc"] + 
                     $data["pwd"] + $data["indigent"] + $data["pensioners"];
             }, $summaryData)); ?></th>
-            <th>0</th>
-            <th>0</th>
-            <th>0</th>
-            <th>0</th>
-            <th>0</th>
+            <th><?php echo array_sum(array_column($summaryData, "non-nhip")); ?></th>
+            <th><?php echo array_sum(array_column($summaryData, "total_admission")); ?></th>
+            <th><?php echo array_sum(array_column($summaryData, "nhip_discharges")); ?></th>
+            <th><?php echo array_sum(array_column($summaryData, "non_nhip_discharges")); ?></th>
+            <th><?php echo array_sum(array_map(function($data) {
+                return $data["govt"] + $data["private"] + $data["self_employed"] + 
+                    $data["ofw"] + $data["owwa"] + $data["sc"] + 
+                    $data["pwd"] + $data["indigent"] + $data["pensioners"];
+            }, $summaryData)); ?></th>
             <th>0</th>
         </tr>
     </tfoot>
