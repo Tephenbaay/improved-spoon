@@ -10,13 +10,12 @@
 }
 table {
     border-collapse: collapse;
-    width: 100%;
 }
 table, th, td {
     border: 1px solid black !important; 
     border-collapse: collapse; 
     text-align: center;
-    padding: 8px;
+    padding: 6px;
 }
 th, td {
     text-align: center;
@@ -24,9 +23,6 @@ th, td {
     border: 1px solid black !important;
     border-right: 1px solid black !important; 
     border-left: 1px solid black !important;   
-}
-th {
-    color: white;
     font-weight: bold;
 }
 thead tr:first-child th {
@@ -36,14 +32,84 @@ thead tr:first-child th {
 tfoot {
     position: sticky;
     bottom: 0;
-    background-color: white;
     font-weight: bold;
 }
 #total-row {
-    background-color: #007bff !important;
-    color: white !important;
+    color: rgb(255, 255, 255) !important;
+    border-right: 1px solid black !important; 
+    background-color: black;
     font-weight: bold;
     text-align: center;
     position: sticky;
     bottom: 0;
+}
+.table-header{
+    position: sticky;
+}
+@media print {
+    @page { size: landscape; }
+    body { font-family: Arial, sans-serif; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid black; padding: 8px; text-align: left; }
+
+    th {
+        background-color: inherit !important; 
+        color: inherit !important; 
+    }
+
+    th:contains("GOV'T"), 
+    th:contains("PRIVATE"), 
+    th:contains("SELF EMPLOYED"), 
+    th:contains("OFW"), 
+    th:contains("OWWA"), 
+    th:contains("SC"), 
+    th:contains("PWD") {
+        background-color: green !important;
+        color: black !important;
+    }
+
+    th:contains("1"), 
+    th:contains("2"), 
+    th:contains("3"), 
+    th:contains("4"), 
+    th:contains("5"), 
+    th:contains("6"), 
+    th:contains("7"), 
+    th:contains("8"), 
+    th:contains("9") {
+        background-color: black !important;
+        color: white !important;
+    }
+
+    th:contains("EMPLOYED"), 
+    th:contains("INDIVIDUAL PAYING"), 
+    th:contains("INDIGENT"), 
+    th:contains("PENSIONERS"), 
+    th:contains("TOTAL ADMISSION"), 
+    th:contains("TOTAL DISCHARGES"), 
+    th:contains("ACCUMULATED PATIENTS LOHS"), 
+    th:contains("NHIP & NON-NHIP") {
+        background-color: yellow !important;
+        color: black !important;
+    }
+
+    thead tr:nth-child(3) th:nth-child(10), 
+    thead tr:nth-child(3) th:nth-child(11) {
+        background-color: orange !important;
+        color: black !important;
+    }
+    thead tr:nth-child(3) th:nth-child(12), 
+    thead tr:nth-child(3) th:nth-child(13) {
+        background-color: blue !important;
+        color: black !important;
+    }
+
+    #total-row {
+        background-color: #007bff !important;
+        color: white !important;
+        font-weight: bold;
+        text-align: center;
+        position: sticky;
+        bottom: 0;
+    }
 }

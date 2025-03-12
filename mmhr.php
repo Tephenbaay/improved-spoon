@@ -198,17 +198,17 @@ if ($latestFile) {
         <h2 class="text-center mb-3">MMHR Summary Table</h2>
         <div class="table-responsive">
             <table class="table table-bordered" id="data-table">
-            <thead>
+            <thead class="table-header">
                 <tr>
-                    <th colspan="1">1</th> 
-                    <th colspan="2">2</th> 
-                    <th colspan="5">3</th> 
-                    <th colspan="1">4</th> 
-                    <th colspan="1">5</th> 
-                    <th colspan="2">6</th> 
-                    <th colspan="1">7</th> 
-                    <th colspan="2">8</th> 
-                    <th colspan="2">9</th> 
+                    <th colspan="1" style="color: white; background-color:black; width:50px;">1</th> 
+                    <th colspan="2" style="color: white; background-color:black;">2</th> 
+                    <th colspan="5" style="color: white; background-color:black;">3</th> 
+                    <th colspan="1" style="color: white; background-color:black;">4</th> 
+                    <th colspan="1" style="color: white; background-color:black;">5</th> 
+                    <th colspan="2" style="color: white; background-color:black;">6</th> 
+                    <th colspan="1" style="color: white; background-color:black;">7</th> 
+                    <th colspan="2" style="color: white; background-color:black;">8</th> 
+                    <th colspan="2" style="color: white; background-color:black;">9</th> 
                 </tr>
                 <tr>
                     <th rowspan="2" style="color: black; background-color:white;" id="date">DATE</th>
@@ -249,7 +249,7 @@ if ($latestFile) {
                             <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["pwd"] : 0; ?></td>
                             <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["indigent"] : 0; ?></td>
                             <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["pensioners"] : 0; ?></td>
-                            <td><?php echo isset($summaryData[$i]) ? 
+                            <td style="background-color: black; color:white;"><?php echo isset($summaryData[$i]) ? 
                                 $summaryData[$i]["govt"] + $summaryData[$i]["private"] + $summaryData[$i]["self_employed"] +
                                 $summaryData[$i]["ofw"] + $summaryData[$i]["owwa"] + $summaryData[$i]["sc"] +
                                 $summaryData[$i]["pwd"] + $summaryData[$i]["indigent"] + $summaryData[$i]["pensioners"] : 0;
@@ -272,30 +272,48 @@ if ($latestFile) {
                 <tfoot>
                 <tr id="total-row">
                     <th>Total</th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "govt")); ?></th> 
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "private")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "self_employed")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "ofw")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "owwa")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "sc")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "pwd")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "indigent")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "pensioners")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_map(function($data) {
+                    <th><?php echo array_sum(array_column($summaryData, "govt")); ?></th> 
+                    <th><?php echo array_sum(array_column($summaryData, "private")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "self_employed")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "ofw")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "owwa")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "sc")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "pwd")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "indigent")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "pensioners")); ?></th>
+                    <th style="background-color: black; color:white;"><?php echo array_sum(array_map(function($data) {
                         return $data["govt"] + $data["private"] + $data["self_employed"] + 
                             $data["ofw"] + $data["owwa"] + $data["sc"] + 
                             $data["pwd"] + $data["indigent"] + $data["pensioners"];
                     }, $summaryData)); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "non-nhip")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "total_admission")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "nhip_discharges")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "non_nhip_discharges")); ?></th>
-                    <th style="background-color: black; color: white;"><?php echo array_sum(array_map(function($data) {
+                    <th><?php echo array_sum(array_column($summaryData, "non-nhip")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "total_admission")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "nhip_discharges")); ?></th>
+                    <th><?php echo array_sum(array_column($summaryData, "non_nhip_discharges")); ?></th>
+                    <th><?php echo array_sum(array_map(function($data) {
                         return $data["govt"] + $data["private"] + $data["self_employed"] + 
                             $data["ofw"] + $data["owwa"] + $data["sc"] + 
                             $data["pwd"] + $data["indigent"] + $data["pensioners"];
                     }, $summaryData)); ?></th>
-                    <th style="background-color: black; color: white;">0</th>
+                    <th>0</th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th colspan="10" style="background-color: black; color:white;"> <?php echo array_sum(array_map(function($data) {
+                        return $data["govt"] + $data["private"] + $data["self_employed"] + 
+                            $data["ofw"] + $data["owwa"] + $data["sc"] + 
+                            $data["pwd"] + $data["indigent"] + $data["pensioners"];
+                    }, $summaryData)); ?></th>
+                    <th style="background-color: black; color:white;"><?php echo array_sum(array_column($summaryData, "non-nhip")); ?></th>
+                    <th style="background-color: black; color:white;"><?php echo array_sum(array_column($summaryData, "total_admission")); ?></th>
+                    <th colspan="2" style="background-color: black; color:white;"><?php echo array_sum(array_map(function($data) {
+                        return $data["nhip_discharges"] + $data["non_nhip_discharges"];
+                    }, $summaryData));?></th>
+                    <th colspan="2" style="background-color: black; color:white;"><?php echo array_sum(array_map(function($data) {
+                        return $data["govt"] + $data["private"] + $data["self_employed"] + 
+                            $data["ofw"] + $data["owwa"] + $data["sc"] + 
+                            $data["pwd"] + $data["indigent"] + $data["pensioners"] + $data["non-nhip"];
+                    }, $summaryData)); ?></th>
                 </tr>
             </tfoot>
             </table>
@@ -304,15 +322,6 @@ if ($latestFile) {
     </div>
     </div>
 <script>
-    document.querySelectorAll("total-row").forEach(th => {
-    if (th.textContent.trim() === "govt" || th.textContent.trim() === "private"
-        || th.textContent.trim() === "self_employed" || th.textContent.trim() === "ofw"
-        || th.textContent.trim() === "owwa" || th.textContent.trim() === "sc" 
-        || th.textContent.trim() === "pwd") {
-        th.style.backgroundColor = "black";
-        th.style.color = "white";
-    }
-});
     document.querySelectorAll("th").forEach(th => {
     if (th.textContent.trim() === "GOV'T" || th.textContent.trim() === "PRIVATE"
         || th.textContent.trim() === "SELF EMPLOYED" || th.textContent.trim() === "OFW"
@@ -320,16 +329,6 @@ if ($latestFile) {
         || th.textContent.trim() === "PWD") {
         th.style.backgroundColor = "green";
         th.style.color = "black";
-    }
-});
-    document.querySelectorAll("th").forEach(th => {
-    if (th.textContent.trim() === "1" || th.textContent.trim() === "2"
-        || th.textContent.trim() === "3" || th.textContent.trim() === "4"
-        || th.textContent.trim() === "5" || th.textContent.trim() === "6" 
-        || th.textContent.trim() === "7" || th.textContent.trim() === "8"
-        || th.textContent.trim() === "9") {
-        th.style.backgroundColor = "black";
-        th.style.color = "white";
     }
 });
     document.querySelectorAll("th").forEach(th => {
