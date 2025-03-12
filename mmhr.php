@@ -96,54 +96,72 @@ if ($latestFile) {
         }    
 
         if (in_array("DISCHARGE(BILLING)", $sheetNames)) {
+            echo "✅ DISCHARGE(BILLING) sheet found! Processing data...<br>";
             $dischargeSheet = $spreadsheet->getSheetByName("DISCHARGE(BILLING)");
-
+        
             foreach ($dischargeSheet->getRowIterator(4) as $row) {
                 $cellIterator = $row->getCellIterator();
                 $cellIterator->setIterateOnlyExistingCells(true);
-
+        
                 $rowData = [];
                 foreach ($cellIterator as $cell) {
                     $rowData[] = $cell->getValue();
                 }
-
+        
                 if (count($rowData) < 10) continue;
-
+        
                 $admitDate = isset($rowData[2]) && is_numeric($rowData[2]) 
                     ? Date::excelToDateTimeObject($rowData[2]) 
                     : null;
-
-                $admitTime = isset($rowData[3]) ? strtotime($rowData[3]) : null;
+        
+                $admitTime = isset($rowData[3]) && strtotime($rowData[3]) 
+                    ? strtotime($rowData[3]) 
+                    : null;
+        
                 $dischargeDate = isset($rowData[4]) && is_numeric($rowData[4]) 
                     ? Date::excelToDateTimeObject($rowData[4]) 
                     : null;
-
-                $dischargeTime = isset($rowData[5]) ? strtotime($rowData[5]) : null;
+        
+                $dischargeTime = isset($rowData[5]) && strtotime($rowData[5]) 
+                    ? strtotime($rowData[5]) 
+                    : null;
+        
                 $membershipType = $rowData[19] ?? "";
-
+        
                 if ($admitDate && $dischargeDate) {
-                    $midnightCutoff = clone $admitDate;
-                    $midnightCutoff->setTime(0, 0, 0);
-                
-                    $dischargeDay = $dischargeDate->format("j");
+                    $admitTimestamp = $admitDate->getTimestamp();
+                    if ($admitTime) {
+                        $admitTimestamp += $admitTime;
+                    }
+        
+                    $dischargeTimestamp = $dischargeDate->getTimestamp();
+                    if ($dischargeTime) {
+                        $dischargeTimestamp += $dischargeTime;
+                    }
 
+                    if (date("Y-m-d", $admitTimestamp) == date("Y-m-d", $dischargeTimestamp)) {
+                        $dischargeDay = $dischargeDate->format("j");
+                    } else {
+                        $dischargeDay = date("j", strtotime("+1 day", $admitTimestamp));
+                    }
+        
                     if (!isset($summaryData[$dischargeDay])) {
                         $summaryData[$dischargeDay] = [
                             "non_nhip_discharges" => 0,
                             "nhip_discharges" => 0
                         ];
                     }
-
+        
                     $membershipType = trim($membershipType);
-                
+        
                     if (preg_match('/\bNON\s?PHIC\b/i', $membershipType)) {
                         $summaryData[$dischargeDay]["non_nhip_discharges"]++;
                     } else {
                         $summaryData[$dischargeDay]["nhip_discharges"]++;
                     }
-                }                
+                }
             }
-        }    
+        }        
     } catch (Exception $e) {
         $message = "Error loading Excel file: " . $e->getMessage();
     }
