@@ -76,7 +76,7 @@ if ($latestFile) {
 
         if (in_array("admission (JAN)", $sheetNames)) {
             $admissionSheet = $spreadsheet->getSheetByName("admission (JAN)");
-            foreach ($admissionSheet->getRowIterator(2) as $row) {
+            foreach ($admissionSheet->getRowIterator(6) as $row) {
                 $cellIterator = $row->getCellIterator();
                 $cellIterator->setIterateOnlyExistingCells(true);
         
@@ -94,10 +94,11 @@ if ($latestFile) {
                 }
             }
         }    
+
         if (in_array("DISCHARGE(BILLING)", $sheetNames)) {
             $dischargeSheet = $spreadsheet->getSheetByName("DISCHARGE(BILLING)");
 
-            foreach ($dischargeSheet->getRowIterator(3) as $row) {
+            foreach ($dischargeSheet->getRowIterator(4) as $row) {
                 $cellIterator = $row->getCellIterator();
                 $cellIterator->setIterateOnlyExistingCells(true);
 
@@ -118,7 +119,7 @@ if ($latestFile) {
                     : null;
 
                 $dischargeTime = isset($rowData[5]) ? strtotime($rowData[5]) : null;
-                $membershipType = $rowData[6] ?? "";
+                $membershipType = $rowData[19] ?? "";
 
                 if ($admitDate && $dischargeDate) {
                     $midnightCutoff = clone $admitDate;
@@ -210,13 +211,13 @@ if ($latestFile) {
                     <th colspan="2">9</th> 
                 </tr>
                 <tr>
-                    <th rowspan="2">DATE</th>
+                    <th rowspan="2" style="color: black; background-color:white;" id="date">DATE</th>
                     <th colspan="2">EMPLOYED</th>
                     <th colspan="5">INDIVIDUAL PAYING</th>
                     <th rowspan="2">INDIGENT</th>
                     <th rowspan="2">PENSIONERS</th>
-                    <th rowspan="2">NHIP</th>
-                    <th rowspan="2">NON-NHIP</th>
+                    <th rowspan="2" style="color: white; background-color:black;">NHIP</th>
+                    <th rowspan="2" style="color: white; background-color:black;">NON-NHIP</th>
                     <th rowspan="2">TOTAL ADMISSION</th>
                     <th colspan="2">TOTAL DISCHARGES</th>
                     <th colspan="2">ACCUMULATED PATIENTS LOHS</th>
@@ -269,34 +270,34 @@ if ($latestFile) {
                     <?php endfor; ?>
                 </tbody>
                 <tfoot>
-        <tr id="total-row">
-            <th>Total</th>
-            <th><?php echo array_sum(array_column($summaryData, "govt")); ?></th> 
-            <th><?php echo array_sum(array_column($summaryData, "private")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "self_employed")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "ofw")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "owwa")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "sc")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "pwd")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "indigent")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "pensioners")); ?></th>
-            <th><?php echo array_sum(array_map(function($data) {
-                return $data["govt"] + $data["private"] + $data["self_employed"] + 
-                    $data["ofw"] + $data["owwa"] + $data["sc"] + 
-                    $data["pwd"] + $data["indigent"] + $data["pensioners"];
-            }, $summaryData)); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "non-nhip")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "total_admission")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "nhip_discharges")); ?></th>
-            <th><?php echo array_sum(array_column($summaryData, "non_nhip_discharges")); ?></th>
-            <th><?php echo array_sum(array_map(function($data) {
-                return $data["govt"] + $data["private"] + $data["self_employed"] + 
-                    $data["ofw"] + $data["owwa"] + $data["sc"] + 
-                    $data["pwd"] + $data["indigent"] + $data["pensioners"];
-            }, $summaryData)); ?></th>
-            <th>0</th>
-        </tr>
-    </tfoot>
+                <tr id="total-row">
+                    <th>Total</th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "govt")); ?></th> 
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "private")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "self_employed")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "ofw")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "owwa")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "sc")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "pwd")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "indigent")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "pensioners")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_map(function($data) {
+                        return $data["govt"] + $data["private"] + $data["self_employed"] + 
+                            $data["ofw"] + $data["owwa"] + $data["sc"] + 
+                            $data["pwd"] + $data["indigent"] + $data["pensioners"];
+                    }, $summaryData)); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "non-nhip")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "total_admission")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "nhip_discharges")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_column($summaryData, "non_nhip_discharges")); ?></th>
+                    <th style="background-color: black; color: white;"><?php echo array_sum(array_map(function($data) {
+                        return $data["govt"] + $data["private"] + $data["self_employed"] + 
+                            $data["ofw"] + $data["owwa"] + $data["sc"] + 
+                            $data["pwd"] + $data["indigent"] + $data["pensioners"];
+                    }, $summaryData)); ?></th>
+                    <th style="background-color: black; color: white;">0</th>
+                </tr>
+            </tfoot>
             </table>
         </div>
     </div>
@@ -366,7 +367,7 @@ if ($latestFile) {
         if (!totalRow) {
             totalRow = document.createElement("tr");
             totalRow.id = "total-row";
-            totalRow.innerHTML = `<td colspan="100%" style="background-color: #007bff; color: white; font-weight: bold; text-align: center;">TOTAL</td>`;
+            totalRow.innerHTML = `<td colspan="100%" style="background-color:rgb(0, 0, 0); color: white; font-weight: bold; text-align: center;">TOTAL</td>`;
             clonedTable.appendChild(totalRow);
         }
     } else if (totalRow) {
@@ -379,75 +380,7 @@ if ($latestFile) {
         <html>
         <head>
             <title>MMHR Summary</title>
-            <style>
-                @media print {
-                    @page { size: landscape; }
-                    body { font-family: Arial, sans-serif; }
-                    table { width: 100%; border-collapse: collapse; }
-                    th, td { border: 1px solid black; padding: 8px; text-align: left; }
-
-                    th {
-                        background-color: inherit !important; 
-                        color: inherit !important; 
-                    }
-
-                    th:contains("GOV'T"), 
-                    th:contains("PRIVATE"), 
-                    th:contains("SELF EMPLOYED"), 
-                    th:contains("OFW"), 
-                    th:contains("OWWA"), 
-                    th:contains("SC"), 
-                    th:contains("PWD") {
-                        background-color: green !important;
-                        color: black !important;
-                    }
-
-                    th:contains("1"), 
-                    th:contains("2"), 
-                    th:contains("3"), 
-                    th:contains("4"), 
-                    th:contains("5"), 
-                    th:contains("6"), 
-                    th:contains("7"), 
-                    th:contains("8"), 
-                    th:contains("9") {
-                        background-color: black !important;
-                        color: white !important;
-                    }
-
-                    th:contains("EMPLOYED"), 
-                    th:contains("INDIVIDUAL PAYING"), 
-                    th:contains("INDIGENT"), 
-                    th:contains("PENSIONERS"), 
-                    th:contains("TOTAL ADMISSION"), 
-                    th:contains("TOTAL DISCHARGES"), 
-                    th:contains("ACCUMULATED PATIENTS LOHS"), 
-                    th:contains("NHIP & NON-NHIP") {
-                        background-color: yellow !important;
-                        color: black !important;
-                    }
-
-                    thead tr:nth-child(3) th:nth-child(10), 
-                    thead tr:nth-child(3) th:nth-child(11) {
-                        background-color: orange !important;
-                        color: black !important;
-                    }
-                    thead tr:nth-child(3) th:nth-child(12), 
-                    thead tr:nth-child(3) th:nth-child(13) {
-                        background-color: blue !important;
-                        color: black !important;
-                    }
-
-                    #total-row {
-                        background-color: #007bff !important;
-                        color: white !important;
-                        font-weight: bold;
-                        text-align: center;
-                        position: sticky;
-                        bottom: 0;
-                    }
-                }
-            </style>
+            <link rel="stylesheet" href="css/mmhr.css">
         </head>
         <body>
             <h2>MMHR Summary Report</h2>
