@@ -14,7 +14,7 @@ $uploadedFiles = glob("uploads/*.{xls,xlsx,csv}", GLOB_BRACE);
 $latestFile = !empty($uploadedFiles) ? end($uploadedFiles) : null;
 $summaryData = array_fill(1, 31, ["govt" => 0, "private" => 0, "self_employed" => 0, "ofw" => 0,
  "owwa" => 0, "sc" => 0, "pwd" => 0, "indigent" => 0, "pensioners" => 0,"non-nhip" => 0,"total_admission" => 0, 
- "nhip_discharges" => 0, "non_nhip_discharges" => 0]);
+ "nhip_discharges" => 0, "non_nhip_discharges" => 0, "non_nhip_lohs" => 0]);
 
 $selectedSheet = isset($_GET['sheet']) ? $_GET['sheet'] : null;
 $sheetNames = [];
@@ -27,9 +27,10 @@ if ($latestFile) {
             $selectedSheet = $sheetNames[0] ?? null; 
         }
         $worksheet = $selectedSheet ? $spreadsheet->getSheetByName($selectedSheet) : null;
-
-        if ($worksheet) {
-            foreach ($worksheet->getRowIterator(2) as $row) {
+        
+        if (in_array("JANUARY", $sheetNames)) {
+            $monthlySheet = $spreadsheet->getSheetByName("JANUARY");
+            foreach ($monthlySheet->getRowIterator(3) as $row) {
                 $cellIterator = $row->getCellIterator();
                 $cellIterator->setIterateOnlyExistingCells(true);
 
@@ -69,6 +70,8 @@ if ($latestFile) {
                         $summaryData[$admissionDate]["pensioners"]++;
                     }   elseif (stripos($memberCategory, "non-nhip") !== false) {
                         $summaryData[$admissionDate]["non-nhip"]++;
+                    }elseif (stripos($memberCategory, "non_nhip_lohs") !== false) {
+                        $summaryData[$admissionDate]["non_nhip_lohs"]++;
                     }
                 }
             }
@@ -95,38 +98,36 @@ if ($latestFile) {
             }
         }    
 
-        if (in_array("DISCHARGE(BILLING)", $sheetNames)) {
-            echo "✅ DISCHARGE(BILLING) sheet found! Processing data...<br>";
-            $dischargeSheet = $spreadsheet->getSheetByName("DISCHARGE(BILLING)");
-        
-            foreach ($dischargeSheet->getRowIterator(4) as $row) {
+        if (in_array(trim("DISCHARGE(BILLING)"), array_map('trim', $sheetNames))) {
+            $dischargeSheet = $spreadsheet->getSheetByName(trim("DISCHARGE(BILLING)"));
+            foreach ($dischargeSheet->getRowIterator(2) as $row) {
                 $cellIterator = $row->getCellIterator();
                 $cellIterator->setIterateOnlyExistingCells(true);
         
                 $rowData = [];
                 foreach ($cellIterator as $cell) {
-                    $rowData[] = $cell->getValue();
-                }
+                    $rowData[$cell->getColumn()] = $cell->getValue();
+
+                if (empty(array_filter($rowData))) continue; // Skip empty rows
+                if (!isset($rowData['A']) || count($rowData) < 10) continue; // Ensure valid data
         
-                if (count($rowData) < 10) continue;
+                $admitDate = isset($rowData['C']) && is_numeric($rowData['C'])
+                    ? Date::excelToDateTimeObject($rowData['C'])
+                    : (strtotime($rowData['C']) ? new DateTime($rowData['C']) : null);
         
-                $admitDate = isset($rowData[2]) && is_numeric($rowData[2]) 
-                    ? Date::excelToDateTimeObject($rowData[2]) 
+                $admitTime = isset($rowData['D']) && strtotime($rowData['D'])
+                    ? strtotime($rowData['D'])
                     : null;
         
-                $admitTime = isset($rowData[3]) && strtotime($rowData[3]) 
-                    ? strtotime($rowData[3]) 
+                $dischargeDate = isset($rowData['E']) && is_numeric($rowData['E'])
+                    ? Date::excelToDateTimeObject($rowData['E'])
+                    : (strtotime($rowData['E']) ? new DateTime($rowData['E']) : null);
+        
+                $dischargeTime = isset($rowData['F']) && strtotime($rowData['F'])
+                    ? strtotime($rowData['F'])
                     : null;
         
-                $dischargeDate = isset($rowData[4]) && is_numeric($rowData[4]) 
-                    ? Date::excelToDateTimeObject($rowData[4]) 
-                    : null;
-        
-                $dischargeTime = isset($rowData[5]) && strtotime($rowData[5]) 
-                    ? strtotime($rowData[5]) 
-                    : null;
-        
-                $membershipType = $rowData[19] ?? "";
+                $membershipType = $rowData['G'] ?? "";  // Column T corresponds to Membership Type
         
                 if ($admitDate && $dischargeDate) {
                     $admitTimestamp = $admitDate->getTimestamp();
@@ -138,12 +139,10 @@ if ($latestFile) {
                     if ($dischargeTime) {
                         $dischargeTimestamp += $dischargeTime;
                     }
-
-                    if (date("Y-m-d", $admitTimestamp) == date("Y-m-d", $dischargeTimestamp)) {
-                        $dischargeDay = $dischargeDate->format("j");
-                    } else {
-                        $dischargeDay = date("j", strtotime("+1 day", $admitTimestamp));
-                    }
+        
+                    $dischargeDay = (date("Y-m-d", $admitTimestamp) == date("Y-m-d", $dischargeTimestamp))
+                        ? $dischargeDate->format("j")
+                        : date("j", strtotime("+1 day", $admitTimestamp));
         
                     if (!isset($summaryData[$dischargeDay])) {
                         $summaryData[$dischargeDay] = [
@@ -161,7 +160,8 @@ if ($latestFile) {
                     }
                 }
             }
-        }        
+        }
+    }        
     } catch (Exception $e) {
         $message = "Error loading Excel file: " . $e->getMessage();
     }
@@ -281,7 +281,8 @@ if ($latestFile) {
                                 $summaryData[$i]["ofw"] + $summaryData[$i]["owwa"] + $summaryData[$i]["sc"] +
                                 $summaryData[$i]["pwd"] + $summaryData[$i]["indigent"] + $summaryData[$i]["pensioners"] : 0;
                             ?></td>
-                            <?php for ($j = 1; $j <= 1; $j++): ?>
+                            <td><?php echo isset($summaryData[$i]) ? $summaryData[$i]["non_nhip_lohs"] : 0; ?></td>
+                            <?php for ($j = 1; $j <= 0; $j++): ?>
                                 <td></td>
                             <?php endfor; ?>
                         </tr>
@@ -313,7 +314,7 @@ if ($latestFile) {
                             $data["ofw"] + $data["owwa"] + $data["sc"] + 
                             $data["pwd"] + $data["indigent"] + $data["pensioners"];
                     }, $summaryData)); ?></th>
-                    <th>0</th>
+                    <th><?php echo array_sum(array_column($summaryData, "non_nhip_lohs")); ?></th>
                 </tr>
                 <tr>
                     <th></th>
@@ -330,7 +331,7 @@ if ($latestFile) {
                     <th colspan="2" style="background-color: black; color:white;"><?php echo array_sum(array_map(function($data) {
                         return $data["govt"] + $data["private"] + $data["self_employed"] + 
                             $data["ofw"] + $data["owwa"] + $data["sc"] + 
-                            $data["pwd"] + $data["indigent"] + $data["pensioners"] + $data["non-nhip"];
+                            $data["pwd"] + $data["indigent"] + $data["pensioners"] + $data["non-nhip"] + $data["non_nhip_lohs"];
                     }, $summaryData)); ?></th>
                 </tr>
             </tfoot>
